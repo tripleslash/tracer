@@ -5,6 +5,11 @@ VisualStudioVersion = 15.0.27130.2036
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Tracer", "Tracer\Tracer.vcxproj", "{87AA7F7B-2804-4F03-A6B4-8BA04335A032}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TracerConsole", "TracerConsole\TracerConsole.vcxproj", "{B9B16A4B-6B6A-4841-8948-289B0E385A98}"
+	ProjectSection(ProjectDependencies) = postProject
+		{87AA7F7B-2804-4F03-A6B4-8BA04335A032} = {87AA7F7B-2804-4F03-A6B4-8BA04335A032}
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -21,6 +26,14 @@ Global
 		{87AA7F7B-2804-4F03-A6B4-8BA04335A032}.Release|x64.Build.0 = Release|x64
 		{87AA7F7B-2804-4F03-A6B4-8BA04335A032}.Release|x86.ActiveCfg = Release|Win32
 		{87AA7F7B-2804-4F03-A6B4-8BA04335A032}.Release|x86.Build.0 = Release|Win32
+		{B9B16A4B-6B6A-4841-8948-289B0E385A98}.Debug|x64.ActiveCfg = Debug|x64
+		{B9B16A4B-6B6A-4841-8948-289B0E385A98}.Debug|x64.Build.0 = Debug|x64
+		{B9B16A4B-6B6A-4841-8948-289B0E385A98}.Debug|x86.ActiveCfg = Debug|Win32
+		{B9B16A4B-6B6A-4841-8948-289B0E385A98}.Debug|x86.Build.0 = Debug|Win32
+		{B9B16A4B-6B6A-4841-8948-289B0E385A98}.Release|x64.ActiveCfg = Release|x64
+		{B9B16A4B-6B6A-4841-8948-289B0E385A98}.Release|x64.Build.0 = Release|x64
+		{B9B16A4B-6B6A-4841-8948-289B0E385A98}.Release|x86.ActiveCfg = Release|Win32
+		{B9B16A4B-6B6A-4841-8948-289B0E385A98}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -6,6 +6,8 @@
 typedef struct TracerLocalProcessContext {
     TracerProcessContext            mBaseContext;
     TracerHotkeySet                 mHotkeys;
+    TracerHandle                    mVehHandle;
+    TracerHandle                    mLogFile;
 } TracerLocalProcessContext;
 
 TracerContext* tracerCreateLocalProcessContext(int type, int size);

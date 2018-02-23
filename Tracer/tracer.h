@@ -17,7 +17,7 @@
     #define TLIB_API                    TLIB_DECL(dllexport)
 #else
     #define TLIB_API                    TLIB_DECL(dllimport)
-    #pragma comment(lib, "tlib")
+    #pragma comment(lib, "tracer")
 #endif
 
 #ifdef __cplusplus
