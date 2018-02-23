@@ -93,16 +93,24 @@ static TracerBool tracerProcessLocalShutdown(TracerContext* ctx) {
     return eTracerTrue;
 }
 
-#define TRFLAG_DR7_LBR_BTF 0x300
-#define TRFLAG_EFLAGS_SINGLE_STEP 0x100
+#define TLIB_TRFLAG_DR7_LBR                 0x100       // Last Branch Record (Bit 8 in DR7)
+														// Mapped to Model Specific Register in Kernel (MSR).
+
+#define TLIB_TRFLAG_DR7_BTF                 0x200       // Branch Trap Flag (Bit 9 in DR7)
+                                                        // Enables trap on next branch
+                                                        // Mapped to Model Specific Register in Kernel (MSR).
+
+#define TLIB_TRFLAG_EFLAGS_SINGLE_STEP      0x100       // Single Step Flag (Trap on next instruction)
 
 static void tracerSetTraceFlags(PCONTEXT context, TracerBool enable) {
+	// Enable or disable the trace flags for the given thread context
+
     if (enable) {
-        context->Dr7 |= TRFLAG_DR7_LBR_BTF;
-        context->EFlags |= TRFLAG_EFLAGS_SINGLE_STEP;
+        context->Dr7 |= (TLIB_TRFLAG_DR7_LBR | TLIB_TRFLAG_DR7_BTF);
+        context->EFlags |= TLIB_TRFLAG_EFLAGS_SINGLE_STEP;
     } else {
-        context->Dr7 &= ~TRFLAG_DR7_LBR_BTF;
-        context->EFlags &= ~TRFLAG_EFLAGS_SINGLE_STEP;
+        context->Dr7 &= ~(TLIB_TRFLAG_DR7_LBR | TLIB_TRFLAG_DR7_BTF);
+        context->EFlags &= ~TLIB_TRFLAG_EFLAGS_SINGLE_STEP;
     }
 }
 
@@ -150,13 +158,6 @@ static LONG CALLBACK tracerVectoredExceptionHandler(PEXCEPTION_POINTERS ex) {
     uint64_t branchFrom = 0;
     uint64_t branchTo = 0;
 
-    uint8_t branchFromInsn = 0;
-    uint8_t branchToInsn = 0;
-
-    char buffer[256];
-
-    DWORD numBytesWritten = 0;
-
     TracerLocalProcessContext* process = (TracerLocalProcessContext*)tracerGetLocalProcessContext();
 
     switch (ex->ExceptionRecord->ExceptionCode) {
@@ -164,17 +165,23 @@ static LONG CALLBACK tracerVectoredExceptionHandler(PEXCEPTION_POINTERS ex) {
         branchFrom = ex->ExceptionRecord->ExceptionInformation[0];
         branchTo = ex->ContextRecord->Eip;
 
-        //branchFromInsn = *(uint8_t*)branchFrom;
-        //branchToInsn = *(uint8_t*)branchTo;
+		if (branchFrom && branchTo) {
+			uint8_t branchFromInsn = *(uint8_t*)branchFrom;
+			uint8_t branchToInsn = *(uint8_t*)branchTo;
 
-        sprintf(buffer, "Branch from 0x%08llX (%02X) to 0x%08llX (%02X)\r\n",
-            branchFrom, branchFromInsn, branchTo, branchToInsn);
+			char buffer[256];
+			sprintf(buffer, "Branch from 0x%08llX (%02X) to 0x%08llX (%02X)\r\n",
+				branchFrom, branchFromInsn, branchTo, branchToInsn);
 
-        MessageBoxA(0, buffer, "", MB_OK);
-        WriteFile(process->mLogFile, buffer, strlen(buffer), &numBytesWritten, NULL);
+            MessageBoxA(NULL, buffer, "Branch", MB_OK);
+
+			DWORD numBytesWritten = 0;
+			WriteFile(process->mLogFile, buffer, strlen(buffer), &numBytesWritten, NULL);
+		}
 
         tracerSetTraceFlags(ex->ContextRecord, eTracerTrue);
         return EXCEPTION_CONTINUE_EXECUTION;
+
     default:
         return EXCEPTION_CONTINUE_SEARCH;
     }

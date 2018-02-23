@@ -80,8 +80,6 @@ void tracerCleanupRemoteMemoryContext(TracerContext* ctx) {
 }
 
 static TracerBool tracerMemoryRemoteInit(TracerContext* ctx) {
-    HMODULE localModule = (HMODULE)tracerCoreGetModuleHandle();
-
     wchar_t fileName[MAX_PATH];
     wchar_t filePath[MAX_PATH];
 
@@ -89,7 +87,8 @@ static TracerBool tracerMemoryRemoteInit(TracerContext* ctx) {
     memset(filePath, 0, sizeof(filePath));
 
     // This is the name of the tracer DLL (e.g. trace.dll)
-    GetModuleFileNameW(localModule, fileName, MAX_PATH);
+	TracerHandle localModule = tracerCoreGetModuleHandle();
+    GetModuleFileNameW((HMODULE)localModule, fileName, MAX_PATH);
 
     // Get the full path to the DLL (e.g. C:\Tracer\trace.dll)
     if (!PathCanonicalizeW(filePath, fileName)) {
