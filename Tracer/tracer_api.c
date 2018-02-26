@@ -20,9 +20,12 @@ static TracerBool tracerDetachProcessCallback(TracerContext* ctx, void* param) {
     return eTracerTrue;
 }
 
-static TracerBool tracerSetHotkeysCallback(TracerContext* ctx, void* param) {
-    //return tracerProcessSetHotkeys(ctx, (TracerHotkeySet*)param);
-    return eTracerFalse;
+static TracerBool tracerStartTraceCallback(TracerContext* ctx, void* param) {
+    return tracerProcessStartTrace(ctx, (TracerStartTrace*)param);
+}
+
+static TracerBool tracerStopTraceCallback(TracerContext* ctx, void* param) {
+    return tracerProcessStopTrace(ctx, (TracerStopTrace*)param);
 }
 
 /*
@@ -131,7 +134,7 @@ TLIB_API const char* TLIB_CALL tracerErrorToString(TracerError error) {
 TLIB_API TracerContext* TLIB_CALL tracerAttachProcess(int pid) {
     TracerAttachProcess attach = {
         /* mSizeOfStruct       = */ sizeof(TracerAttachProcess),
-        /* mProcessId          = */ pid
+        /* mProcessId          = */ pid,
     };
     return tracerAttachProcessEx(&attach);
 }
@@ -211,10 +214,19 @@ TLIB_API TracerContext* TLIB_CALL tracerGetContextForPid(int pid) {
     return ctx;
 }
 
-TLIB_API TracerBool TLIB_CALL tracerSetHotkeys(TracerHotkeySet* hotkeys) {
+TLIB_API TracerBool TLIB_CALL tracerStartTrace(void* functionAddress, int threadId) {
+    TracerStartTrace startTrace = {
+        /* mSizeOfStruct        = */ sizeof(TracerStartTrace),
+        /* mThreadId            = */ threadId,
+        /* mAddress             = */ functionAddress,
+    };
+    return tracerStartTraceEx(&startTrace);
+}
+
+TLIB_API TracerBool TLIB_CALL tracerStartTraceEx(TracerStartTrace* startTrace) {
     tracerCoreSetLastError(eTracerErrorSuccess);
 
-    if (!hotkeys || hotkeys->mSizeOfStruct < sizeof(TracerHotkeySet)) {
+    if (!startTrace || startTrace->mSizeOfStruct < sizeof(TracerStartTrace)) {
         tracerCoreSetLastError(eTracerErrorInvalidArgument);
         return eTracerFalse;
     }
@@ -224,10 +236,42 @@ TLIB_API TracerBool TLIB_CALL tracerSetHotkeys(TracerHotkeySet* hotkeys) {
 
     TracerContext* ctx = tracerCoreGetProcessContext();
     if (ctx) {
-        // result = tracerProcessSetHotkeys(ctx, hotkeys);
+        result = tracerStartTraceCallback(ctx, startTrace);
     } else {
-        result = tracerCoreEnumContexts(tracerSetHotkeysCallback,
-            hotkeys, eTracerProcessContext, eTracerFalse);
+        result = tracerCoreEnumContexts(tracerStartTraceCallback,
+            startTrace, eTracerProcessContext, eTracerFalse);
+    }
+
+    tracerCoreReleaseProcessContextLock();
+    return result;
+}
+
+TLIB_API TracerBool TLIB_CALL tracerStopTrace(void* functionAddress, int threadId) {
+    TracerStopTrace stopTrace = {
+        /* mSizeOfStruct        = */ sizeof(TracerStopTrace),
+        /* mThreadId            = */ threadId,
+        /* mAddress             = */ functionAddress,
+    };
+    return tracerStopTraceEx(&stopTrace);
+}
+
+TLIB_API TracerBool TLIB_CALL tracerStopTraceEx(TracerStopTrace* stopTrace) {
+    tracerCoreSetLastError(eTracerErrorSuccess);
+
+    if (!stopTrace || stopTrace->mSizeOfStruct < sizeof(TracerStopTrace)) {
+        tracerCoreSetLastError(eTracerErrorInvalidArgument);
+        return eTracerFalse;
+    }
+
+    TracerBool result = eTracerFalse;
+    tracerCoreAcquireProcessContextLock();
+
+    TracerContext* ctx = tracerCoreGetProcessContext();
+    if (ctx) {
+        result = tracerStopTraceCallback(ctx, stopTrace);
+    } else {
+        result = tracerCoreEnumContexts(tracerStopTraceCallback,
+            stopTrace, eTracerProcessContext, eTracerFalse);
     }
 
     tracerCoreReleaseProcessContextLock();

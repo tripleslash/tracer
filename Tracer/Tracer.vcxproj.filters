@@ -18,9 +18,6 @@
     <ClInclude Include="core.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
-    <ClInclude Include="tracer.h">
-      <Filter>Headerdateien</Filter>
-    </ClInclude>
     <ClInclude Include="process_local.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
@@ -39,12 +36,18 @@
     <ClInclude Include="memory_remote.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
+    <ClInclude Include="vetrace.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="trace.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="tracer_api.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="core.c">
-      <Filter>Quelldateien</Filter>
-    </ClCompile>
-    <ClCompile Include="tracer.c">
       <Filter>Quelldateien</Filter>
     </ClCompile>
     <ClCompile Include="process.c">
@@ -59,10 +62,19 @@
     <ClCompile Include="memory.c">
       <Filter>Quelldateien</Filter>
     </ClCompile>
-    <ClCompile Include="memory_local.cpp">
+    <ClCompile Include="memory_remote.c">
       <Filter>Quelldateien</Filter>
     </ClCompile>
-    <ClCompile Include="memory_remote.c">
+    <ClCompile Include="tracer_api.c">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="memory_local.c">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="trace.c">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="vetrace.c">
       <Filter>Quelldateien</Filter>
     </ClCompile>
   </ItemGroup>

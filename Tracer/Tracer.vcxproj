@@ -116,7 +116,7 @@
       </Command>
     </PreBuildEvent>
     <PostBuildEvent>
-      <Command>xcopy tracer.h $(OutDir) /C /H /R /Y /D</Command>
+      <Command>xcopy tracer_api.h $(OutDir) /C /H /R /Y /D</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -150,7 +150,7 @@
       </Command>
     </PreBuildEvent>
     <PostBuildEvent>
-      <Command>xcopy tracer.h $(OutDir) /C /H /R /Y /D</Command>
+      <Command>xcopy tracer_api.h $(OutDir) /C /H /R /Y /D</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -189,7 +189,7 @@
       </Command>
     </PreBuildEvent>
     <PostBuildEvent>
-      <Command>xcopy tracer.h $(OutDir) /C /H /R /Y /D</Command>
+      <Command>xcopy tracer_api.h $(OutDir) /C /H /R /Y /D</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -228,18 +228,20 @@
       </Command>
     </PreBuildEvent>
     <PostBuildEvent>
-      <Command>xcopy tracer.h $(OutDir) /C /H /R /Y /D</Command>
+      <Command>xcopy tracer_api.h $(OutDir) /C /H /R /Y /D</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="core.c" />
     <ClCompile Include="memory.c" />
-    <ClCompile Include="memory_local.cpp" />
+    <ClCompile Include="memory_local.c" />
     <ClCompile Include="memory_remote.c" />
     <ClCompile Include="process.c" />
     <ClCompile Include="process_local.c" />
     <ClCompile Include="process_remote.c" />
-    <ClCompile Include="tracer.c" />
+    <ClCompile Include="trace.c" />
+    <ClCompile Include="tracer_api.c" />
+    <ClCompile Include="vetrace.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="core.h" />
@@ -249,7 +251,9 @@
     <ClInclude Include="process.h" />
     <ClInclude Include="process_local.h" />
     <ClInclude Include="process_remote.h" />
-    <ClInclude Include="tracer.h" />
+    <ClInclude Include="trace.h" />
+    <ClInclude Include="tracer_api.h" />
+    <ClInclude Include="vetrace.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

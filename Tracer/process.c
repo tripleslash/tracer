@@ -48,3 +48,20 @@ TracerContext* tracerProcessGetMemoryContext(TracerContext* ctx) {
     return process->mMemoryContext;
 }
 
+TracerBool tracerProcessStartTrace(TracerContext* ctx, const TracerStartTrace* startTrace) {
+    if (!tracerCoreValidateContext(ctx, eTracerProcessContext)) {
+        return eTracerFalse;
+    }
+    TracerProcessContext* process = (TracerProcessContext*)ctx;
+    TLIB_METHOD_CHECK_SUPPORT(process->mStartTrace, eTracerFalse);
+    return process->mStartTrace(ctx, startTrace);
+}
+
+TracerBool tracerProcessStopTrace(TracerContext* ctx, const TracerStopTrace* stopTrace) {
+    if (!tracerCoreValidateContext(ctx, eTracerProcessContext)) {
+        return eTracerFalse;
+    }
+    TracerProcessContext* process = (TracerProcessContext*)ctx;
+    TLIB_METHOD_CHECK_SUPPORT(process->mStopTrace, eTracerFalse);
+    return process->mStopTrace(ctx, stopTrace);
+}

@@ -4,7 +4,7 @@
 
 #define TLIB_CORE_COMPILING_DLL 1
 
-#include "tracer.h"
+#include "tracer_api.h"
 
 #define WINVER 0x0501
 #define _WIN32_WINNT 0x0501
@@ -25,6 +25,11 @@ typedef wchar_t tchar;
 typedef char tchar;
 #endif
 
+#define TLIB_METHOD_CHECK_SUPPORT(function, ...) \
+    if (!function) { \
+        tracerCoreSetLastError(eTracerErrorNotImplemented); \
+        return __VA_ARGS__; \
+    }
 
 typedef struct TracerBaseContext {
 	int								mSizeOfStruct;
@@ -44,6 +49,9 @@ typedef enum TracerContextClassType {
     eTracerMemoryContext            = 0x00000020,
     eTracerMemoryContextLocal       = eTracerMemoryContext | 0x00000001,
     eTracerMemoryContextRemote      = eTracerMemoryContext | 0x00000002,
+
+    eTracerTraceContext             = 0x00000040,
+    eTracerTraceContextVEH          = eTracerTraceContext | 0x00000001,
 } TracerContextClassType;
 
 TracerContext* tracerCoreCreateContext(int type, int size);

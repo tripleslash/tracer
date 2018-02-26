@@ -114,14 +114,22 @@ typedef struct TracerAttachProcess {
 } TracerAttachProcess;
 
 /**
- * @brief   The structure that should be passed to \ref tracerSetHotkeys.
- * @remarks If you set one of the keys to \c 0, the key will be disabled.
- *          Don't forget to set \ref mSizeOfStruct.
- * @see     tracerSetHotkeys
- */
-typedef struct TracerHotkeySet {
+* TODO: comment
+*/
+typedef struct TracerStartTrace {
     int             mSizeOfStruct;              ///< The size of the structure (in bytes).
-} TracerHotkeySet;
+    int             mThreadId;                  ///< The thread id that should be traced (-1 for all threads).
+    void*           mAddress;                   ///< The address of the function to trace.
+} TracerStartTrace;
+
+/**
+* TODO: comment
+*/
+typedef struct TracerStopTrace {
+    int             mSizeOfStruct;              ///< The size of the structure (in bytes).
+    int             mThreadId;                  ///< The thread id that should be traced (-1 for all threads).
+    void*           mAddress;                   ///< The address of the function to trace.
+} TracerStopTrace;
 
 /**
 * @brief   A context is the equivalent to a class in this lib.
@@ -293,17 +301,19 @@ TLIB_API TracerContext* TLIB_CALL tracerGetProcessContext(void);
 */
 TLIB_API TracerContext* TLIB_CALL tracerGetContextForPid(int pid);
 
-/**
-* @brief   Sets the hotkeys for the current process context.
-* @param   hotkeys         See \ref TracerHotkeySet.
-* @retval  eTracerTrue     The function succeeded.
-* @retval  eTracerFalse    The function failed.
-* @remarks If the process context is \c NULL, the hotkeys for all attached processes
-*          are updated.
-*          To get extended error information, call \ref tracerGetLastError.
-* @see     tracerSetProcessContext
-*/
-TLIB_API TracerBool TLIB_CALL tracerSetHotkeys(TracerHotkeySet* hotkeys);
+
+// Begin tracing a new function
+// Sets a hardware breakpoint on the function address
+// When the breakpoint triggers, the thread that triggered it will enable tracing
+// When the function returns, the trace flags are removed
+TLIB_API TracerBool TLIB_CALL tracerStartTrace(void* functionAddress, int threadId TLIB_ARG(-1));
+
+TLIB_API TracerBool TLIB_CALL tracerStartTraceEx(TracerStartTrace* startTrace);
+
+// Remove the hardware breakpoint from the function and unset the threads trace flags
+TLIB_API TracerBool TLIB_CALL tracerStopTrace(void* functionAddress, int threadId TLIB_ARG(-1));
+
+TLIB_API TracerBool TLIB_CALL tracerStopTraceEx(TracerStopTrace* stopTrace);
 
 #ifdef __cplusplus
 }
