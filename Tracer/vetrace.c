@@ -150,24 +150,66 @@ static LONG CALLBACK tracerVeTraceHandler(PEXCEPTION_POINTERS ex) {
     uint64_t branchFrom = 0;
     uint64_t branchTo = 0;
 
+    void* exceptionAddr = ex->ExceptionRecord->ExceptionAddress;
+
     TracerLocalProcessContext* process = (TracerLocalProcessContext*)tracerGetLocalProcessContext();
     TracerVeTraceContext* veTrace = (TracerVeTraceContext*)process->mTraceContext;
 
+    int index = -1;
+
     switch (ex->ExceptionRecord->ExceptionCode) {
     case EXCEPTION_SINGLE_STEP:
-        branchFrom = ex->ExceptionRecord->ExceptionInformation[0];
-        branchTo = ex->ContextRecord->Eip;
+        // Check if the interrupt came from a hardware breakpoint
 
-        if (branchFrom && branchTo) {
-            uint8_t branchFromInsn = *(uint8_t*)branchFrom;
-            uint8_t branchToInsn = *(uint8_t*)branchTo;
+        // If it was triggered by a HW breakpoint we need to unset the control bit for this
+        // index and restore it on the next call to the interrupt handler, otherwise
+        // the interrupt handler will get called in an endless loop.
 
-            char buffer[256];
-            sprintf(buffer, "Branch from 0x%08llX (%02X) to 0x%08llX (%02X)\r\n",
-                branchFrom, branchFromInsn, branchTo, branchToInsn);
-
-            MessageBoxA(NULL, buffer, "Branch", MB_OK);
+        if (exceptionAddr == ex->ContextRecord->Dr0) {
+            index = 0;
+        } else if (exceptionAddr == ex->ContextRecord->Dr1) {
+            index = 1;
+        } else if (exceptionAddr == ex->ContextRecord->Dr2) {
+            index = 2;
+        } else if (exceptionAddr == ex->ContextRecord->Dr3) {
+            index = 3;
         }
+        if (index != -1)
+        tracerHwBreakpointSetBits(&ex->ContextRecord->Dr7, index * 2, 1, 0);
+
+        // Check if this register index is active
+        if (index != -1 && tracerHwBreakpointGetBits(ex->ContextRecord->Dr7, index*2, 1)) {
+
+            MessageBoxA(0, "triggered", "", MB_OK);
+
+            // Unset the control bit for this debug register
+            tracerHwBreakpointSetBits(&ex->ContextRecord->Dr7, index*2, 1, 0);
+
+            // Save the index to restore the breakpoint on the next call to the handler
+            tracerCoreSetPendingHwBreakpointIndex(index);
+        }
+
+        //// TODO: finish this shit
+        //index = tracerCoreGetPendingHwBreakpointIndex();
+
+        //if (index != -1) {
+        //    tracerHwBreakpointSetBits(&ex->ContextRecord->Dr7, index*2, 1, 1);
+        //}
+
+
+        //branchFrom = ex->ExceptionRecord->ExceptionInformation[0];
+        //branchTo = ex->ContextRecord->Eip;
+
+        //if (branchFrom && branchTo) {
+        //    uint8_t branchFromInsn = *(uint8_t*)branchFrom;
+        //    uint8_t branchToInsn = *(uint8_t*)branchTo;
+
+        //    char buffer[256];
+        //    sprintf(buffer, "Branch from 0x%08llX (%02X) to 0x%08llX (%02X)\r\n",
+        //        branchFrom, branchFromInsn, branchTo, branchToInsn);
+
+        //    MessageBoxA(NULL, buffer, "Branch", MB_OK);
+        //}
 
         tracerVeTraceSetFlags(ex->ContextRecord, eTracerTrue);
         return EXCEPTION_CONTINUE_EXECUTION;

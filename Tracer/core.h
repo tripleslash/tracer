@@ -84,6 +84,10 @@ TracerContext* tracerCoreGetProcessContext();
 
 TracerHandle tracerCoreGetModuleHandle();
 
+int tracerCoreGetPendingHwBreakpointIndex();
+
+void tracerCoreSetPendingHwBreakpointIndex(int index);
+
 TracerHandle tracerCoreFindWindow(int processId);
 
 TracerBool tracerCoreSetPrivilege(TracerHandle process, const tchar* privilege, TracerBool enable);
