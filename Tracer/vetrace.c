@@ -77,7 +77,7 @@ static TracerBool tracerVeTraceShutdown(TracerContext* ctx) {
 static TracerBool tracerVeTraceStart(TracerContext* ctx, void* address, int threadId) {
 
     // Set a breakpoint on the start address of the trace
-    tracerSetHwBreakpointGlobal(tracerVeTraceStop, 1, eTracerBpCondExecute);
+    TracerHandle breakpoint = tracerSetHwBreakpointGlobal(tracerVeTraceStop, 1, eTracerBpCondExecute);
 
     return eTracerTrue;
 }

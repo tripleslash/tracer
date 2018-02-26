@@ -31,7 +31,8 @@ static TracerHandle tracerSetHwBreakpointOnForeignThread(void* address, int leng
 
     DWORD accessFlags = THREAD_GET_CONTEXT
         | THREAD_SET_CONTEXT
-        | THREAD_QUERY_INFORMATION;
+        | THREAD_QUERY_INFORMATION
+        | THREAD_SUSPEND_RESUME;
 
     HANDLE thread = OpenThread(accessFlags, FALSE, (DWORD)threadId);
 
@@ -39,6 +40,8 @@ static TracerHandle tracerSetHwBreakpointOnForeignThread(void* address, int leng
         tracerCoreSetLastError(eTracerErrorSystemCall);
         return NULL;
     }
+
+    TracerBool suspended = (SuspendThread(thread) != (DWORD)-1);
 
     TracerHandle result = NULL;
 
@@ -97,6 +100,10 @@ static TracerHandle tracerSetHwBreakpointOnForeignThread(void* address, int leng
         tracerCoreSetLastError(eTracerErrorSystemCall);
     }
 
+    if (suspended) {
+        ResumeThread(thread);
+    }
+
     CloseHandle(thread);
     return result;
 }
@@ -111,12 +118,15 @@ static TracerBool tracerRemoveHwBreakpointOnForeignThread(TracerHandle handle) {
 
     DWORD accessFlags = THREAD_GET_CONTEXT
         | THREAD_SET_CONTEXT
-        | THREAD_QUERY_INFORMATION;
+        | THREAD_QUERY_INFORMATION
+        | THREAD_SUSPEND_RESUME;
 
     TracerBool result = eTracerFalse;
 
     HANDLE thread = OpenThread(accessFlags, FALSE, breakpoint->mThreadId);
+
     if (thread) {
+        TracerBool suspended = (SuspendThread(thread) != (DWORD)-1);
 
         CONTEXT ctx;
         ctx.ContextFlags = CONTEXT_DEBUG_REGISTERS;
@@ -130,9 +140,12 @@ static TracerBool tracerRemoveHwBreakpointOnForeignThread(TracerHandle handle) {
             } else {
                 tracerCoreSetLastError(eTracerErrorSystemCall);
             }
-
         } else {
             tracerCoreSetLastError(eTracerErrorSystemCall);
+        }
+
+        if (suspended) {
+            ResumeThread(thread);
         }
 
         CloseHandle(thread);
@@ -157,22 +170,9 @@ typedef struct TracerSetHwBreakpoint {
 static DWORD WINAPI tracerSetHwBreakpointOnCurrentThread(LPVOID parameter) {
     TracerSetHwBreakpoint* args = (TracerSetHwBreakpoint*)parameter;
 
-    HANDLE thread = OpenThread(THREAD_SUSPEND_RESUME, FALSE, (DWORD)args->mThreadId);
-
-    TracerBool suspended = eTracerFalse;
-
-    if (thread && SuspendThread(thread) != (DWORD)-1) {
-        suspended = eTracerTrue;
-    }
-
     args->mBreakpoint = tracerSetHwBreakpointOnForeignThread(
         args->mAddress, args->mLength, args->mThreadId, args->mCondition);
 
-    if (suspended) {
-        ResumeThread(thread);
-    }
-
-    CloseHandle(thread);
     return TRUE;
 }
 
@@ -277,24 +277,7 @@ TracerHandle tracerSetHwBreakpointGlobal(void* address, int length, TracerHwBpCo
 }
 
 static DWORD WINAPI tracerRemoveHwBreakpointOnCurrentThread(LPVOID parameter) {
-    TracerHwBreakpoint* breakpoint = (TracerHwBreakpoint*)parameter;
-
-    HANDLE thread = OpenThread(THREAD_SUSPEND_RESUME, FALSE, (DWORD)breakpoint->mThreadId);
-
-    TracerBool suspended = eTracerFalse;
-
-    if (thread && SuspendThread(thread) != (DWORD)-1) {
-        suspended = eTracerTrue;
-    }
-
-    TracerBool result = tracerRemoveHwBreakpointOnForeignThread((TracerHandle)breakpoint);
-
-    if (suspended) {
-        ResumeThread(thread);
-    }
-
-    CloseHandle(thread);
-    return result;
+    return tracerRemoveHwBreakpointOnForeignThread((TracerHandle)parameter);
 }
 
 TracerBool tracerRemoveHwBreakpoint(TracerHandle handle) {
