@@ -4,13 +4,13 @@
 #define TLIB_VERSION                    100
 
 #if defined(_MSC_VER)
-	#define TLIB_DECL(...)              __declspec(__VA_ARGS__)
-	#define TLIB_CALL					__stdcall
+    #define TLIB_DECL(...)              __declspec(__VA_ARGS__)
+    #define TLIB_CALL                   __stdcall
 #elif defined(__GNUC__)
-	#define TLIB_DECL(...)              __attribute__((__VA_ARGS__))
-	#define TLIB_CALL                   __attribute__((stdcall))
+    #define TLIB_DECL(...)              __attribute__((__VA_ARGS__))
+    #define TLIB_CALL                   __attribute__((stdcall))
 #else
-	#error Compiler not supported!
+    #error Compiler not supported!
 #endif
 
 #if TLIB_CORE_COMPILING_DLL
@@ -21,7 +21,7 @@
 #endif
 
 #ifdef __cplusplus
-    #define TLIB_ARG(v)               = v
+    #define TLIB_ARG(v)                 = v
 #else
     #define TLIB_ARG(v)
 #endif

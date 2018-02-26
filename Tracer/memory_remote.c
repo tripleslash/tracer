@@ -87,7 +87,7 @@ static TracerBool tracerMemoryRemoteInit(TracerContext* ctx) {
     memset(filePath, 0, sizeof(filePath));
 
     // This is the name of the tracer DLL (e.g. trace.dll)
-	TracerHandle localModule = tracerCoreGetModuleHandle();
+    TracerHandle localModule = tracerCoreGetModuleHandle();
     GetModuleFileNameW((HMODULE)localModule, fileName, MAX_PATH);
 
     // Get the full path to the DLL (e.g. C:\Tracer\trace.dll)

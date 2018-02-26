@@ -87,7 +87,7 @@ static TracerBool tracerVeTraceStop(TracerContext* ctx, void* address, int threa
 }
 
 #define TLIB_VETRACE_DR7_LBR                 0x100       // Last Branch Record (Bit 8 in DR7)
-														 // Mapped to Model Specific Register in Kernel (MSR).
+                                                         // Mapped to Model Specific Register in Kernel (MSR).
 
 #define TLIB_VETRACE_DR7_BTF                 0x200       // Branch Trap Flag (Bit 9 in DR7)
                                                          // Enables trap on next branch
@@ -96,7 +96,7 @@ static TracerBool tracerVeTraceStop(TracerContext* ctx, void* address, int threa
 #define TLIB_VETRACE_EFLAGS_SINGLE_STEP      0x100       // Single Step Flag (Trap on next instruction)
 
 static void tracerVeTraceSetFlags(PCONTEXT context, TracerBool enable) {
-	// Enable or disable the trace flags for the given thread context
+    // Enable or disable the trace flags for the given thread context
 
     if (enable) {
         context->Dr7 |= (TLIB_VETRACE_DR7_LBR | TLIB_VETRACE_DR7_BTF);
@@ -158,16 +158,16 @@ static LONG CALLBACK tracerVeTraceHandler(PEXCEPTION_POINTERS ex) {
         branchFrom = ex->ExceptionRecord->ExceptionInformation[0];
         branchTo = ex->ContextRecord->Eip;
 
-		if (branchFrom && branchTo) {
-			uint8_t branchFromInsn = *(uint8_t*)branchFrom;
-			uint8_t branchToInsn = *(uint8_t*)branchTo;
+        if (branchFrom && branchTo) {
+            uint8_t branchFromInsn = *(uint8_t*)branchFrom;
+            uint8_t branchToInsn = *(uint8_t*)branchTo;
 
-			char buffer[256];
-			sprintf(buffer, "Branch from 0x%08llX (%02X) to 0x%08llX (%02X)\r\n",
-				branchFrom, branchFromInsn, branchTo, branchToInsn);
+            char buffer[256];
+            sprintf(buffer, "Branch from 0x%08llX (%02X) to 0x%08llX (%02X)\r\n",
+                branchFrom, branchFromInsn, branchTo, branchToInsn);
 
             MessageBoxA(NULL, buffer, "Branch", MB_OK);
-		}
+        }
 
         tracerVeTraceSetFlags(ex->ContextRecord, eTracerTrue);
         return EXCEPTION_CONTINUE_EXECUTION;

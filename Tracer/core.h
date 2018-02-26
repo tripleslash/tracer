@@ -32,26 +32,26 @@ typedef char tchar;
     }
 
 typedef struct TracerBaseContext {
-	int								mSizeOfStruct;
-	int								mTypeFlags;
+    int                              mSizeOfStruct;
+    int                              mTypeFlags;
 
-	struct TracerBaseContext*		mNextLink;
-	struct TracerBaseContext*		mPrevLink;
+    struct TracerBaseContext*        mNextLink;
+    struct TracerBaseContext*        mPrevLink;
 
     void(*mCleanup)(TracerContext* ctx);
 } TracerBaseContext;
 
 typedef enum TracerContextClassType {
-    eTracerProcessContext           = 0x00000010,
-    eTracerProcessContextLocal      = eTracerProcessContext | 0x00000001,
-    eTracerProcessContextRemote     = eTracerProcessContext | 0x00000002,
+    eTracerProcessContext            = 0x00000010,
+    eTracerProcessContextLocal       = eTracerProcessContext | 0x00000001,
+    eTracerProcessContextRemote      = eTracerProcessContext | 0x00000002,
 
-    eTracerMemoryContext            = 0x00000020,
-    eTracerMemoryContextLocal       = eTracerMemoryContext | 0x00000001,
-    eTracerMemoryContextRemote      = eTracerMemoryContext | 0x00000002,
+    eTracerMemoryContext             = 0x00000020,
+    eTracerMemoryContextLocal        = eTracerMemoryContext | 0x00000001,
+    eTracerMemoryContextRemote       = eTracerMemoryContext | 0x00000002,
 
-    eTracerTraceContext             = 0x00000040,
-    eTracerTraceContextVEH          = eTracerTraceContext | 0x00000001,
+    eTracerTraceContext              = 0x00000040,
+    eTracerTraceContextVEH           = eTracerTraceContext | 0x00000001,
 } TracerContextClassType;
 
 TracerContext* tracerCoreCreateContext(int type, int size);
