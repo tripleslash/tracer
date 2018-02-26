@@ -174,13 +174,9 @@ static LONG CALLBACK tracerVeTraceHandler(PEXCEPTION_POINTERS ex) {
         } else if (exceptionAddr == ex->ContextRecord->Dr3) {
             index = 3;
         }
-        if (index != -1)
-        tracerHwBreakpointSetBits(&ex->ContextRecord->Dr7, index * 2, 1, 0);
 
         // Check if this register index is active
         if (index != -1 && tracerHwBreakpointGetBits(ex->ContextRecord->Dr7, index*2, 1)) {
-
-            MessageBoxA(0, "triggered", "", MB_OK);
 
             // Unset the control bit for this debug register
             tracerHwBreakpointSetBits(&ex->ContextRecord->Dr7, index*2, 1, 0);
