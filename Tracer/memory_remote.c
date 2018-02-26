@@ -290,6 +290,7 @@ static TracerHandle tracerMemoryRemoteFindModule(TracerContext* ctx, const tchar
         }
 
         CloseHandle(snapshot);
+
     } else {
         tracerCoreSetLastError(eTracerErrorSystemCall);
     }

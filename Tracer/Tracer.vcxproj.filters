@@ -45,6 +45,9 @@
     <ClInclude Include="tracer_api.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
+    <ClInclude Include="hwbp.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="core.c">
@@ -75,6 +78,9 @@
       <Filter>Quelldateien</Filter>
     </ClCompile>
     <ClCompile Include="vetrace.c">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="hwbp.c">
       <Filter>Quelldateien</Filter>
     </ClCompile>
   </ItemGroup>

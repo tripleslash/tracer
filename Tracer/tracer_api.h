@@ -66,6 +66,7 @@ typedef enum TracerError {
     eTracerErrorWaitIncomplete          = 10,   ///< The operation failed because one of the wait handles returned an error.
     eTracerErrorRemoteInterop           = 11,   ///< The operation failed because the remote end returned an error.
     eTracerErrorPatternsNotFound        = 12,   ///< The operation failed because one of the patterns could not be found.
+    eTracerErrorOutOfResources          = 13,   ///< The operation failed because a required resource was exhausted.
 } TracerError;
 
 // Specify structure packing to prevent padding mismatches.

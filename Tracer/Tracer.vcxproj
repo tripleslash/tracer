@@ -233,6 +233,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="core.c" />
+    <ClCompile Include="hwbp.c" />
     <ClCompile Include="memory.c" />
     <ClCompile Include="memory_local.c" />
     <ClCompile Include="memory_remote.c" />
@@ -245,6 +246,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="core.h" />
+    <ClInclude Include="hwbp.h" />
     <ClInclude Include="memory.h" />
     <ClInclude Include="memory_local.h" />
     <ClInclude Include="memory_remote.h" />

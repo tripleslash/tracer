@@ -1,5 +1,6 @@
 
 #include "vetrace.h"
+#include "hwbp.h"
 #include "process_local.h"
 
 #include <stdio.h>
@@ -75,8 +76,8 @@ static TracerBool tracerVeTraceShutdown(TracerContext* ctx) {
 
 static TracerBool tracerVeTraceStart(TracerContext* ctx, void* address, int threadId) {
 
-    // Test: Trigger on current thread
-    __asm _emit 0xf1
+    // Set a breakpoint on the start address of the trace
+    tracerSetHwBreakpointGlobal(tracerVeTraceStop, 1, eTracerBpCondExecute);
 
     return eTracerTrue;
 }
