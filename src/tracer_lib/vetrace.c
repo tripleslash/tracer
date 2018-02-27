@@ -16,8 +16,6 @@ static TracerBool tracerVeTraceStop(TracerContext* ctx, void* address, int threa
 
 static void tracerVeTraceSetFlags(PCONTEXT context, TracerBool enable);
 
-static TracerBool tracerVeTraceSetFlagsOnThread(DWORD threadId, TracerBool enable);
-
 static LONG CALLBACK tracerVeTraceHandler(PEXCEPTION_POINTERS ex);
 
 TracerContext* tracerCreateVeTraceContext(int type, int size) {
@@ -86,6 +84,19 @@ static TracerBool tracerVeTraceStop(TracerContext* ctx, void* address, int threa
     return eTracerFalse;
 }
 
+static TracerBool tracerVeTraceInstruction(TracerContext* ctx, PEXCEPTION_POINTERS ex,
+    TracerBool isNewTrace) {
+
+    // Returns whether or not the trace for the current function has ended
+
+    TracerVeTraceContext* veTrace = (TracerVeTraceContext*)ctx;
+
+    void* branchSrc = (void*)ex->ExceptionRecord->ExceptionInformation[0];
+    void* branchDst = (void*)ex->ExceptionRecord->ExceptionAddress;
+
+    return eTracerTrue;
+}
+
 #define TLIB_VETRACE_DR7_LBR                 0x100       // Last Branch Record (Bit 8 in DR7)
                                                          // Mapped to Model Specific Register in Kernel (MSR).
 
@@ -109,24 +120,17 @@ static void tracerVeTraceSetFlags(PCONTEXT context, TracerBool enable) {
 
 static LONG CALLBACK tracerVeTraceHandler(PEXCEPTION_POINTERS ex) {
     TracerLocalProcessContext* process = (TracerLocalProcessContext*)tracerGetLocalProcessContext();
-    TracerVeTraceContext* veTrace = (TracerVeTraceContext*)process->mTraceContext;
 
     switch (ex->ExceptionRecord->ExceptionCode) {
     case EXCEPTION_SINGLE_STEP:
     {
+        // Whether or not this is a fresh function trace
+        TracerBool isNewTrace = eTracerFalse;
+
         // Check if there is already an ongoing trace
         int index = tracerCoreGetActiveHwBreakpointIndex();
 
-        if (index != -1) {
-
-            // Make sure the enabled bit for the active breakpoint is turned on
-            // This will restore the bit that we removed during the first call to the handler
-            tracerHwBreakpointSetBits(&ex->ContextRecord->Dr7, index*2, 1, 1);
-
-            // Enable branch tracing on this thread
-            tracerVeTraceSetFlags(ex->ContextRecord, eTracerTrue);
-
-        } else {
+        if (index == -1) {
             // There was no active trace, check if the interrupt came from a hardware breakpoint
 
             // If it was triggered by a HW breakpoint we need to unset the control bit for this
@@ -152,29 +156,37 @@ static LONG CALLBACK tracerVeTraceHandler(PEXCEPTION_POINTERS ex) {
             }
 
             // Temporarily remove the enabled bit for this breakpoint
-            // Otherwise we would run into an endless loop, because the interrupt would
-            // continue to be called on the breakpoint address.
+            // We will restore it on the next call to the handler. The breakpoint index
+            // will be stored in thread local storage for the time being.
             tracerHwBreakpointSetBits(&ex->ContextRecord->Dr7, index*2, 1, 0);
 
-            // Save the index to restore the breakpoint on the next call to the handler
+            // This will back up the breakpoint index into the thread local storage
             tracerCoreSetActiveHwBreakpointIndex(index);
 
-            // Enable branch tracing on this thread
-            tracerVeTraceSetFlags(ex->ContextRecord, eTracerTrue);
+            // Trace just started on this function
+            isNewTrace = eTracerTrue;
+
+        } else {
+
+            // Restore the bit that we removed during the first call to the handler
+            tracerHwBreakpointSetBits(&ex->ContextRecord->Dr7, index * 2, 1, 1);
         }
 
-        uint64_t branchFrom = ex->ExceptionRecord->ExceptionInformation[0];
-        uint64_t branchTo = ex->ContextRecord->Eip;
+        // If this function returns false it means that the trace for the current thread has
+        // ended because the function returned to the caller. In this case we need to clean
+        // up the flags on the thread.
+        if (tracerVeTraceInstruction(process->mTraceContext, ex, isNewTrace)) {
 
-        if (branchFrom && branchTo) {
-            uint8_t branchFromInsn = *(uint8_t*)branchFrom;
-            uint8_t branchToInsn = *(uint8_t*)branchTo;
+            // Keep branch tracing on this thread
+            tracerVeTraceSetFlags(ex->ContextRecord, eTracerTrue);
 
-            char buffer[256];
-            sprintf(buffer, "Branch from 0x%08llX (%02X) to 0x%08llX (%02X)\r\n",
-                branchFrom, branchFromInsn, branchTo, branchToInsn);
+        } else {
 
-            MessageBoxA(NULL, buffer, "Branch", MB_OK);
+            // Disable branch tracing on this thread
+            tracerVeTraceSetFlags(ex->ContextRecord, eTracerFalse);
+
+            // And remove the stored tls index for the breakpoint
+            tracerCoreSetActiveHwBreakpointIndex(-1);
         }
 
         return EXCEPTION_CONTINUE_EXECUTION;
