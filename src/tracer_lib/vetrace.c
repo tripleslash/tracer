@@ -83,10 +83,6 @@ static TracerBool tracerVeTraceStart(TracerContext* ctx, void* address, int thre
 }
 
 static TracerBool tracerVeTraceStop(TracerContext* ctx, void* address, int threadId) {
-    __asm nop
-    __asm nop
-    __asm nop
-    __asm nop
     return eTracerFalse;
 }
 
@@ -110,47 +106,6 @@ static void tracerVeTraceSetFlags(PCONTEXT context, TracerBool enable) {
         context->EFlags &= ~TLIB_VETRACE_EFLAGS_SINGLE_STEP;
     }
 }
-
-static TracerBool tracerVeTraceSetFlagsOnThread(DWORD threadId, TracerBool enable) {
-    DWORD accessFlags = THREAD_SUSPEND_RESUME
-        | THREAD_GET_CONTEXT
-        | THREAD_SET_CONTEXT
-        | THREAD_QUERY_INFORMATION;
-
-    TracerBool success = eTracerFalse;
-
-    HANDLE thread = OpenThread(accessFlags, FALSE, threadId);
-    if (thread) {
-        if (SuspendThread(thread) != (DWORD)-1) {
-            
-            CONTEXT context;
-
-            if (GetThreadContext(thread, &context)) {
-                tracerVeTraceSetFlags(&context, enable);
-
-                if (SetThreadContext(thread, &context)) {
-                    success = eTracerTrue;
-                } else {
-                    tracerCoreSetLastError(eTracerErrorSystemCall);
-                }
-            } else {
-                tracerCoreSetLastError(eTracerErrorSystemCall);
-            }
-
-            ResumeThread(thread);
-        } else {
-            tracerCoreSetLastError(eTracerErrorSystemCall);
-        }
-
-        CloseHandle(thread);
-    } else {
-        tracerCoreSetLastError(eTracerErrorSystemCall);
-    }
-
-    return success;
-}
-
-
 
 static LONG CALLBACK tracerVeTraceHandler(PEXCEPTION_POINTERS ex) {
     TracerLocalProcessContext* process = (TracerLocalProcessContext*)tracerGetLocalProcessContext();
