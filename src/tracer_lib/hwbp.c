@@ -59,7 +59,7 @@ static TracerHandle tracerSetHwBreakpointOnForeignThread(void* address, int leng
         int index = 0;
 
         for (; index < 4; ++index) {
-            if ((ctx.Dr7 & (1 << (index * 2))) == 0) {
+            if ((ctx.Dr7 & (1 << (index << 1))) == 0) {
                 break;
             }
         }
@@ -82,9 +82,9 @@ static TracerHandle tracerSetHwBreakpointOnForeignThread(void* address, int leng
                 default: assert(FALSE);
                 }
 
-                tracerHwBreakpointSetBits(&ctx.Dr7, 16 + (index*4), 2, (int)cond);
-                tracerHwBreakpointSetBits(&ctx.Dr7, 18 + (index*4), 2, length);
-                tracerHwBreakpointSetBits(&ctx.Dr7, index*2, 1, 1);
+                tracerHwBreakpointSetBits(&ctx.Dr7, 16 | (index << 2), 2, (int)cond);
+                tracerHwBreakpointSetBits(&ctx.Dr7, 18 | (index << 2), 2, length);
+                tracerHwBreakpointSetBits(&ctx.Dr7, index << 1, 1, 1);
 
                 if (SetThreadContext(thread, &ctx)) {
                     result = (TracerHandle)breakpoint;
@@ -138,7 +138,7 @@ static TracerBool tracerRemoveHwBreakpointOnForeignThread(TracerHandle handle) {
 
         if (GetThreadContext(thread, &ctx)) {
             // Only need to clear the debug control bits for this breakpoint
-            tracerHwBreakpointSetBits(&ctx.Dr7, breakpoint->mIndex*2, 1, 0);
+            tracerHwBreakpointSetBits(&ctx.Dr7, breakpoint->mIndex << 1, 1, 0);
 
             if (SetThreadContext(thread, &ctx)) {
                 result = eTracerTrue;

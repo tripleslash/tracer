@@ -149,7 +149,7 @@ static LONG CALLBACK tracerVeTraceHandler(PEXCEPTION_POINTERS ex) {
             }
 
             // Check if this index was actually enabled in the debug control register
-            if (index == -1 || !tracerHwBreakpointGetBits(ex->ContextRecord->Dr7, index*2, 1)) {
+            if (index == -1 || !tracerHwBreakpointGetBits(ex->ContextRecord->Dr7, index << 1, 1)) {
 
                 // The interrupt was not triggered by our tracer
                 return EXCEPTION_CONTINUE_SEARCH;
@@ -158,7 +158,7 @@ static LONG CALLBACK tracerVeTraceHandler(PEXCEPTION_POINTERS ex) {
             // Temporarily remove the enabled bit for this breakpoint
             // We will restore it on the next call to the handler. The breakpoint index
             // will be stored in thread local storage for the time being.
-            tracerHwBreakpointSetBits(&ex->ContextRecord->Dr7, index*2, 1, 0);
+            tracerHwBreakpointSetBits(&ex->ContextRecord->Dr7, index << 1, 1, 0);
 
             // This will back up the breakpoint index into the thread local storage
             tracerCoreSetActiveHwBreakpointIndex(index);
@@ -169,7 +169,7 @@ static LONG CALLBACK tracerVeTraceHandler(PEXCEPTION_POINTERS ex) {
         } else {
 
             // Restore the bit that we removed during the first call to the handler
-            tracerHwBreakpointSetBits(&ex->ContextRecord->Dr7, index * 2, 1, 1);
+            tracerHwBreakpointSetBits(&ex->ContextRecord->Dr7, index << 1, 1, 1);
         }
 
         // If this function returns false it means that the trace for the current thread has
