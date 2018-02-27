@@ -59,7 +59,8 @@ static TracerHandle tracerSetHwBreakpointOnForeignThread(void* address, int leng
         int index = 0;
 
         for (; index < 4; ++index) {
-            if ((ctx.Dr7 & (1 << (index << 1))) == 0) {
+            if (!tracerHwBreakpointGetBits(ctx.Dr7, index << 1, 1)) {
+                // Index is free
                 break;
             }
         }
