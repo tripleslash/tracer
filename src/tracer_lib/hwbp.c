@@ -19,6 +19,54 @@ void tracerHwBreakpointSetBits(uintptr_t* dw, int lowBit, int bits, int newValue
     *dw = (*dw & ~(mask << lowBit)) | (newValue << lowBit);
 }
 
+int tracerSetHwBreakpointOnContext(void* address, int length, PCONTEXT ctx, TracerHwBpCond cond) {
+    if (!address) {
+        tracerCoreSetLastError(eTracerErrorInvalidArgument);
+        return -1;
+    }
+
+    switch (length) {
+    case 1: length = 0; break;
+    case 2: length = 1; break;
+    case 4: length = 3; break;
+    default:
+        tracerCoreSetLastError(eTracerErrorInvalidArgument);
+        return -1;
+    }
+
+    // Find first available hardware register index
+    int index = 0;
+
+    for (; index < 4; ++index) {
+        if (!tracerHwBreakpointGetBits(ctx->Dr7, index << 1, 1)) {
+            // Index is free
+            break;
+        }
+    }
+
+    if (index < 4) {
+
+        switch (index) {
+        case 0: ctx->Dr0 = (uintptr_t)address; break;
+        case 1: ctx->Dr1 = (uintptr_t)address; break;
+        case 2: ctx->Dr2 = (uintptr_t)address; break;
+        case 3: ctx->Dr3 = (uintptr_t)address; break;
+        default: assert(FALSE);
+        }
+
+        tracerHwBreakpointSetBits(&ctx->Dr7, 16 | (index << 2), 2, (int)cond);
+        tracerHwBreakpointSetBits(&ctx->Dr7, 18 | (index << 2), 2, length);
+        tracerHwBreakpointSetBits(&ctx->Dr7, index << 1, 1, 1);
+
+        return index;
+
+    } else {
+        tracerCoreSetLastError(eTracerErrorOutOfResources);
+    }
+
+    return -1;
+}
+
 static TracerHandle tracerSetHwBreakpointOnForeignThread(void* address, int length, int threadId, TracerHwBpCond cond) {
     if (!address || threadId == (int)GetCurrentThreadId()) {
         tracerCoreSetLastError(eTracerErrorInvalidArgument);
@@ -301,6 +349,14 @@ TracerBool tracerRemoveHwBreakpoint(TracerHandle handle) {
         // Each breakpoint handle can involve multiple threads, so we need to remove the breakpoint on each of them
         TracerHwBreakpoint* next = breakpoint->mNextLink;
         breakpoint->mNextLink = NULL;
+
+        if (breakpoint->mThreadId == -1) {
+            // This type of breakpoint was added manually by using a provided CONTEXT structure. It can only
+            // be removed using tracerRemoveHwBreakpointOnContext.
+
+            tracerCoreSetLastError(eTracerErrorInvalidArgument);
+            return eTracerFalse;
+        }
 
         if (breakpoint->mThreadId == (int)GetCurrentThreadId()) {
 

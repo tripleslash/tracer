@@ -88,6 +88,10 @@ int tracerCoreGetActiveHwBreakpointIndex();
 
 void tracerCoreSetActiveHwBreakpointIndex(int index);
 
+int tracerCoreGetSuspendedHwBreakpointIndex();
+
+void tracerCoreSetSuspendedHwBreakpointIndex(int index);
+
 TracerHandle tracerCoreFindWindow(int processId);
 
 TracerBool tracerCoreSetPrivilege(TracerHandle process, const tchar* privilege, TracerBool enable);
