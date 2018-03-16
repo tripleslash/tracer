@@ -55,17 +55,13 @@ static TracerBool tracerVeTraceInit(TracerContext* ctx) {
     // Initialize the Zydis library
     ZydisDecoderInit(&trace->mDecoder, ZYDIS_MACHINE_MODE_LONG_COMPAT_32, ZYDIS_ADDRESS_WIDTH_32);
 
-    // Find the bounds of the wow64 emulation module
-    trace->mWow64CpuDllStart = (uintptr_t)GetModuleHandle(TEXT("ntdll.dll"));
+    uintptr_t moduleBase = (uintptr_t)tracerCoreGetModuleHandle();
 
-    // If the module is not present it means we run on a native system
-    if (trace->mWow64CpuDllStart) {
-        PIMAGE_DOS_HEADER dosHeader = (PIMAGE_DOS_HEADER)trace->mWow64CpuDllStart;
-        PIMAGE_NT_HEADERS ntHeader = (PIMAGE_NT_HEADERS)(trace->mWow64CpuDllStart + dosHeader->e_lfanew);
+    PIMAGE_DOS_HEADER dosHeader = (PIMAGE_DOS_HEADER)moduleBase;
+    PIMAGE_NT_HEADERS ntHeader = (PIMAGE_NT_HEADERS)(moduleBase + dosHeader->e_lfanew);
 
-        trace->mWow64CpuDllStart += ntHeader->OptionalHeader.BaseOfCode;
-        trace->mWow64CpuDllEnd = trace->mWow64CpuDllStart + ntHeader->OptionalHeader.SizeOfCode;
-    }
+    trace->mBaseOfCode = moduleBase + ntHeader->OptionalHeader.BaseOfCode;
+    trace->mSizeOfCode = ntHeader->OptionalHeader.SizeOfCode;
 
     // Register the VEH. To avoid unwanted calls, make sure it is the last handler in the chain.
     trace->mAddVehHandle = AddVectoredExceptionHandler(TRUE, tracerVeTraceHandler);
@@ -87,60 +83,26 @@ static TracerBool tracerVeTraceShutdown(TracerContext* ctx) {
     return eTracerTrue;
 }
 
+static __declspec(noinline) void tracerTestTrace(void) {
+    puts("hello world");
+}
+
 static TracerBool tracerVeTraceStart(TracerContext* ctx, void* address, int threadId) {
 
     // Set a breakpoint on the start address of the trace
-    TracerHandle breakpoint = tracerSetHwBreakpointGlobal(tracerVeTraceStop, 1, eTracerBpCondExecute);
+    TracerHandle breakpoint = tracerSetHwBreakpointGlobal(tracerTestTrace, 1, eTracerBpCondExecute);
 
     char buf[256];
-    sprintf(buf, "Started tracing at %p", tracerVeTraceStop);
+    sprintf(buf, "Started tracing at %p", tracerTestTrace);
     MessageBoxA(0, buf, "", MB_OK);
     return eTracerTrue;
 }
 
-
 static TracerBool tracerVeTraceStop(TracerContext* ctx, void* address, int threadId) {
-    printf("hello world");
+    tracerTestTrace();
 
+    printf("call depth %d", ((TracerVeTraceContext*)ctx)->mCallDepth);
     return eTracerFalse;
-}
-
-static TracerVeTraceNode* tracerVeTraceNewNode(TracerContext* ctx, TracerVeTraceNodeType type) {
-    TracerVeTraceNode* node = (TracerVeTraceNode*)calloc(1, sizeof(TracerVeTraceNode));
-
-    if (!node) {
-        tracerCoreSetLastError(eTracerErrorNotEnoughMemory);
-        return NULL;
-    }
-
-    node->mType = type;
-
-    TracerVeTraceContext* trace = (TracerVeTraceContext*)ctx;
-
-    if (!trace->mLastNode) {
-        trace->mLastNode = node;
-        return node;
-    }
-
-    switch (trace->mLastNode->mType) {
-    case eTracerNodeTypeCall:
-        trace->mLastNode->mFirstChild = node;
-        node->mParent = trace->mLastNode;
-        break;
-    case eTracerNodeTypeBranch:
-        node->mPrev = trace->mLastNode;
-        node->mParent = node->mPrev->mParent;
-        node->mPrev->mNext = node;
-        break;
-    case eTracerNodeTypeReturn:
-        node->mPrev = trace->mLastNode->mParent;
-        node->mParent = node->mPrev->mParent;
-        node->mPrev->mNext = node;
-        break;
-    }
-
-    trace->mLastNode = node;
-    return node;
 }
 
 #define TLIB_VETRACE_DR7_LBR                 0x100       // Last Branch Record (Bit 8 in DR7)
@@ -166,7 +128,7 @@ static void tracerVeTraceSetFlags(PCONTEXT context, TracerBool enable) {
 
 static TracerBool tracerVeTraceIsAddressInExcludedModule(TracerContext* ctx, uintptr_t address) {
     TracerVeTraceContext* trace = (TracerVeTraceContext*)ctx;
-    return address >= trace->mWow64CpuDllStart && address < trace->mWow64CpuDllEnd;
+    return address < trace->mBaseOfCode || address >= trace->mBaseOfCode + trace->mSizeOfCode;
 }
 
 static TracerBool tracerVeHasSuspendedTrace() {
@@ -174,6 +136,10 @@ static TracerBool tracerVeHasSuspendedTrace() {
 }
 
 static void tracerVeSuspendTrace(PCONTEXT ctx) {
+    char buf[256];
+    sprintf(buf, "Suspended at %p resume point %p", ctx->Eip, *(void**)ctx->Esp);
+    MessageBoxA(0, buf, "", MB_OK);
+
     int suspendIndex = tracerSetHwBreakpointOnContext(
         *(void**)ctx->Esp, 1, ctx, eTracerBpCondExecute);
 
@@ -195,53 +161,80 @@ static void tracerVeResumeTrace(PCONTEXT ctx) {
     tracerCoreSetSuspendedHwBreakpointIndex(-1);
 }
 
-static TracerBool tracerVeTraceInstruction(TracerContext* ctx, PEXCEPTION_POINTERS ex) {
+static TracerTracedInstruction* tracerVeAddTrace(TracerContext* ctx, const void* address) {
     TracerVeTraceContext* trace = (TracerVeTraceContext*)ctx;
 
-    if (!trace->mActiveTrace) {
-        // We always interpret the first node as a call to this node
-        TracerVeTraceNode* node = tracerVeTraceNewNode(ctx, eTracerNodeTypeCall);
-        trace->mActiveTrace = node;
-
-        return eTracerTrue;
+    if (trace->mTraceLength >= TLIB_MAX_TRACE_LENGTH) {
+        tracerCoreSetLastError(eTracerErrorNotEnoughMemory);
+        return NULL;
     }
 
-    uint8_t* branchDst = (uint8_t*)ex->ExceptionRecord->ExceptionAddress;
-    uint8_t* branchSrc = (uint8_t*)ex->ExceptionRecord->ExceptionInformation[0];
+    TracerTracedInstruction* inst = &trace->mTraceArray[trace->mTraceLength++];
+    ZydisDecoderDecodeBuffer(&trace->mDecoder, address, ZYDIS_MAX_INSTRUCTION_LENGTH, 0, &inst->mInstruction);
 
-    if (!branchSrc) {
-        return eTracerFalse;
-    }
+    inst->mTraceId = trace->mCurrentTraceId;
 
-    ZydisDecodedInstruction instruction;
-    ZydisDecoderDecodeBuffer(&trace->mDecoder, branchSrc, ZYDIS_MAX_INSTRUCTION_LENGTH, 0, &instruction);
-
-    TracerVeTraceNode* node = NULL;
-
-    switch (instruction.mnemonic) {
+    switch (inst->mInstruction.mnemonic) {
     case ZYDIS_MNEMONIC_CALL:
-        node = tracerVeTraceNewNode(ctx, eTracerNodeTypeCall);
+        inst->mType = eTracerNodeTypeCall;
         break;
     case ZYDIS_MNEMONIC_RET:
     case ZYDIS_MNEMONIC_IRET:
     case ZYDIS_MNEMONIC_IRETD:
     case ZYDIS_MNEMONIC_IRETQ:
-        node = tracerVeTraceNewNode(ctx, eTracerNodeTypeReturn);
-
-        if (node && node->mParent == trace->mActiveTrace) {
-            // We returned out of the tracing function, so trace is finished
-            char buf[256];
-            sprintf(buf, "Finished tracing at instruction %p", branchSrc);
-            MessageBoxA(0, buf, "", MB_OK);
-
-            return eTracerFalse;
-        }
+        inst->mType = eTracerNodeTypeReturn;
         break;
     default:
-        node = tracerVeTraceNewNode(ctx, eTracerNodeTypeBranch);
+        inst->mType = eTracerNodeTypeBranch;
     }
 
-    if (!node) {
+    return inst;
+}
+
+static TracerBool tracerVeTraceInstruction(TracerContext* ctx, PEXCEPTION_POINTERS ex, TracerBool isNewTrace) {
+    TracerVeTraceContext* trace = (TracerVeTraceContext*)ctx;
+
+    uint8_t* branchDst = (uint8_t*)ex->ExceptionRecord->ExceptionAddress;
+    uint8_t* branchSrc = (uint8_t*)ex->ExceptionRecord->ExceptionInformation[0];
+
+    if (isNewTrace) {
+        branchSrc = branchDst;
+
+        trace->mCallDepth = 0;
+        trace->mCurrentTraceId++;
+    }
+
+    if (!branchSrc) {
+        MessageBoxA(0, "no branch src", "", MB_OK);
+        return eTracerFalse;
+    }
+
+    TracerTracedInstruction* inst = tracerVeAddTrace(ctx, branchSrc);
+    if (inst == NULL) {
+        MessageBoxA(0, "out of memory", "", MB_OK);
+        return eTracerFalse;
+    }
+
+    char b[256];
+
+    switch (inst->mType) {
+    case eTracerNodeTypeCall:
+        trace->mCallDepth++;
+        sprintf(b, "call at %p", branchSrc);
+        MessageBoxA(0, b, "", MB_OK);
+        break;
+    case eTracerNodeTypeReturn:
+        trace->mCallDepth--;
+        sprintf(b, "return at %p", branchSrc);
+        MessageBoxA(0, b, "", MB_OK);
+        break;
+    }
+
+    if (trace->mCallDepth < 0) {
+        char buf[256];
+        sprintf(buf, "Stopped tracing at %p", branchSrc);
+        MessageBoxA(0, buf, "", MB_OK);
+
         return eTracerFalse;
     }
 
@@ -256,6 +249,8 @@ static LONG CALLBACK tracerVeTraceHandler(PEXCEPTION_POINTERS ex) {
     switch (ex->ExceptionRecord->ExceptionCode) {
     case EXCEPTION_SINGLE_STEP:
     {
+        TracerBool isNewTrace = eTracerFalse;
+
         // Check if there is already an ongoing trace
         int index = tracerCoreGetActiveHwBreakpointIndex();
 
@@ -290,6 +285,8 @@ static LONG CALLBACK tracerVeTraceHandler(PEXCEPTION_POINTERS ex) {
             // This will back up the breakpoint index into the thread local storage
             tracerCoreSetActiveHwBreakpointIndex(index);
 
+            isNewTrace = eTracerTrue;
+
         } else {
 
             // Restore the bit that we removed during the first call to the handler
@@ -318,7 +315,7 @@ static LONG CALLBACK tracerVeTraceHandler(PEXCEPTION_POINTERS ex) {
 
         // If this function returns false it means that the tracing for the current
         // thread should be disabled. In this case we remove the branch trace flags.
-        if (tracerVeTraceInstruction(process->mTraceContext, ex)) {
+        if (tracerVeTraceInstruction(process->mTraceContext, ex, isNewTrace)) {
 
             // Keep branch tracing on this thread
             tracerVeTraceSetFlags(ex->ContextRecord, eTracerTrue);

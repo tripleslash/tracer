@@ -8,30 +8,36 @@
 #include <Zydis/Zydis.h>
 #pragma comment(lib, "Zydis/Zydis.lib")
 
-typedef enum TracerVeTraceNodeType {
+typedef enum TracerTracedInstructionType {
     eTracerNodeTypeBranch       = 0,
     eTracerNodeTypeCall         = 1,
     eTracerNodeTypeReturn       = 2,
-} TracerVeTraceNodeType;
+} TracerTracedInstructionType;
 
-typedef struct TracerVeTraceNode {
-    struct TracerVeTraceNode*   mPrev;
-    struct TracerVeTraceNode*   mNext;
+typedef struct TracerTracedInstruction {
+    int                         mTraceId;
+    TracerTracedInstructionType mType;
+    ZydisDecodedInstruction     mInstruction;
+} TracerTracedInstruction;
 
-    struct TracerVeTraceNode*   mParent;
-    struct TracerVeTraceNode*   mFirstChild;
+typedef struct TracerActiveTrace {
+    void*                       mStartAddress;
+} TracerActiveTrace;
 
-    TracerVeTraceNodeType       mType;
-} TracerVeTraceNode;
+#define TLIB_MAX_ACTIVE_TRACES  4
+#define TLIB_MAX_TRACE_LENGTH   8192
 
 typedef struct TracerVeTraceContext {
     TracerTraceContext          mBaseContext;
     TracerHandle                mAddVehHandle;
     ZydisDecoder                mDecoder;
-    TracerVeTraceNode*          mActiveTrace;
-    TracerVeTraceNode*          mLastNode;
-    uintptr_t                   mWow64CpuDllStart;
-    uintptr_t                   mWow64CpuDllEnd;
+    uintptr_t                   mBaseOfCode;
+    uintptr_t                   mSizeOfCode;
+    TracerActiveTrace           mActiveTraces[TLIB_MAX_ACTIVE_TRACES];
+    TracerTracedInstruction     mTraceArray[TLIB_MAX_TRACE_LENGTH];
+    int                         mTraceLength;
+    int                         mCallDepth;
+    int                         mCurrentTraceId;
 } TracerVeTraceContext;
 
 TracerContext* tracerCreateVeTraceContext(int type, int size);
