@@ -9,7 +9,7 @@
 
 #pragma comment(lib, "shlwapi")
 
-static TracerBool tracerMemoryRemoteInit(TracerContext* ctx);
+static TracerBool tracerMemoryRemoteInit(TracerContext* ctx, TracerHandle sharedMemoryHandle);
 
 static TracerBool tracerMemoryRemoteShutdown(TracerContext* ctx);
 
@@ -27,10 +27,8 @@ static TracerHandle tracerMemoryRemoteCallNamedExport(TracerContext* ctx, const 
 
 static TracerHandle tracerMemoryRemoteCallNamedExportEx(TracerContext* ctx, const tchar* module, const char* exportName, void* parameter, int timeout);
 
-static int tracerMemoryRemoteCallLocalExport(TracerContext* ctx, const char* exportName, const TracerStruct* parameter);
 
-
-TracerContext* tracerCreateRemoteMemoryContext(int type, int size, int pid) {
+TracerContext* tracerCreateRemoteMemoryContext(int type, int size, int pid, TracerHandle sharedMemoryHandle) {
     assert(size >= sizeof(TracerRemoteMemoryContext));
     assert(pid >= 0);
 
@@ -63,7 +61,7 @@ TracerContext* tracerCreateRemoteMemoryContext(int type, int size, int pid) {
         return NULL;
     }
 
-    if (!tracerMemoryRemoteInit(ctx)) {
+    if (!tracerMemoryRemoteInit(ctx, sharedMemoryHandle)) {
         tracerCoreDestroyContext(ctx);
         return NULL;
     }
@@ -79,7 +77,7 @@ void tracerCleanupRemoteMemoryContext(TracerContext* ctx) {
     tracerCleanupMemoryContext(ctx);
 }
 
-static TracerBool tracerMemoryRemoteInit(TracerContext* ctx) {
+static TracerBool tracerMemoryRemoteInit(TracerContext* ctx, TracerHandle sharedMemoryHandle) {
     wchar_t fileName[MAX_PATH];
     wchar_t filePath[MAX_PATH];
 
@@ -136,6 +134,7 @@ static TracerBool tracerMemoryRemoteInit(TracerContext* ctx) {
                 TracerAttachProcess attach = {
                     /* mSizeOfStruct         = */ sizeof(TracerAttachProcess),
                     /* mProcessId            = */ -1,
+                    /* mSharedMemoryHandle   = */ sharedMemoryHandle,
                 };
 
                 result = tracerMemoryRemoteCallLocalExport(
@@ -373,7 +372,7 @@ TracerHandle tracerMemoryRemoteCallNamedExportEx(TracerContext* ctx,
 
 #define MAX_EXPORT_NAME_LENGTH 256
 
-static int tracerMemoryRemoteCallLocalExport(TracerContext* ctx, const char* exportName, const TracerStruct* parameter) {
+int tracerMemoryRemoteCallLocalExport(TracerContext* ctx, const char* exportName, const TracerStruct* parameter) {
     char decoratedExportName[MAX_EXPORT_NAME_LENGTH];
     snprintf(decoratedExportName, MAX_EXPORT_NAME_LENGTH, "_%s@4", exportName);
 

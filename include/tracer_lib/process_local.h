@@ -8,7 +8,7 @@ typedef struct TracerLocalProcessContext {
     TracerContext*                  mTraceContext;
 } TracerLocalProcessContext;
 
-TracerContext* tracerCreateLocalProcessContext(int type, int size);
+TracerContext* tracerCreateLocalProcessContext(int type, int size, TracerHandle sharedMemoryHandle);
 
 void tracerCleanupLocalProcessContext(TracerContext* ctx);
 

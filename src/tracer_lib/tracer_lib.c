@@ -135,6 +135,7 @@ TLIB_API TracerContext* TLIB_CALL tracerAttachProcess(int pid) {
     TracerAttachProcess attach = {
         /* mSizeOfStruct       = */ sizeof(TracerAttachProcess),
         /* mProcessId          = */ pid,
+        /* mSharedMemoryHandle = */ NULL,
     };
     return tracerAttachProcessEx(&attach);
 }
@@ -159,7 +160,7 @@ TLIB_API TracerContext* TLIB_CALL tracerAttachProcessEx(TracerAttachProcess* att
     TracerContext* ctx = tracerCoreGetContextForPID(pid);
     if (!ctx) {
         if (pid == currentPid) {
-            ctx = tracerCreateLocalProcessContext(eTracerProcessContextLocal, sizeof(TracerLocalProcessContext));
+            ctx = tracerCreateLocalProcessContext(eTracerProcessContextLocal, sizeof(TracerLocalProcessContext), attach->mSharedMemoryHandle);
         } else {
             ctx = tracerCreateRemoteProcessContext(eTracerProcessContextRemote, sizeof(TracerRemoteProcessContext), pid);
         }

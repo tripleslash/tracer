@@ -1,5 +1,6 @@
 
 #include <tracer_lib/process.h>
+#include <tracer_lib/rwqueue.h>
 
 #include <assert.h>
 
@@ -27,8 +28,25 @@ void tracerCleanupProcessContext(TracerContext* ctx) {
 
     TracerProcessContext* process = (TracerProcessContext*)ctx;
 
-    tracerCoreDestroyContext(process->mMemoryContext);
-    process->mMemoryContext = NULL;
+    if (process->mSharedRWQueue) {
+        tracerDestroyRWQueue(process->mSharedRWQueue);
+        process->mSharedRWQueue = NULL;
+    }
+
+    if (process->mMappedView) {
+        UnmapViewOfFile(process->mMappedView);
+        process->mMappedView = NULL;
+    }
+
+    if (process->mSharedMemoryHandle) {
+        CloseHandle(process->mSharedMemoryHandle);
+        process->mSharedMemoryHandle = NULL;
+    }
+
+    if (process->mMemoryContext) {
+        tracerCoreDestroyContext(process->mMemoryContext);
+        process->mMemoryContext = NULL;
+    }
 
     tracerCoreCleanupContext(ctx);
 }

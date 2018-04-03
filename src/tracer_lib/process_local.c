@@ -2,6 +2,7 @@
 #include <tracer_lib/process_local.h>
 #include <tracer_lib/memory_local.h>
 #include <tracer_lib/vetrace.h>
+#include <tracer_lib/rwqueue.h>
 
 #include <assert.h>
 
@@ -15,7 +16,7 @@ static TracerBool tracerProcessLocalStopTrace(TracerContext* ctx, const TracerSt
 
 static TracerContext* gTracerLocalProcessContext = NULL;
 
-TracerContext* tracerCreateLocalProcessContext(int type, int size) {
+TracerContext* tracerCreateLocalProcessContext(int type, int size, TracerHandle sharedMemoryHandle) {
     assert(size >= sizeof(TracerLocalProcessContext));
     assert(gTracerLocalProcessContext == NULL);
 
@@ -35,6 +36,7 @@ TracerContext* tracerCreateLocalProcessContext(int type, int size) {
     base->mCleanup = tracerCleanupLocalProcessContext;
 
     TracerProcessContext* process = (TracerProcessContext*)ctx;
+    process->mSharedMemoryHandle = sharedMemoryHandle;
     process->mStartTrace = tracerProcessLocalStartTrace;
     process->mStopTrace = tracerProcessLocalStopTrace;
 
@@ -42,6 +44,22 @@ TracerContext* tracerCreateLocalProcessContext(int type, int size) {
         eTracerMemoryContextLocal, sizeof(TracerLocalMemoryContext));
 
     if (!process->mMemoryContext) {
+        tracerCoreDestroyContext(ctx);
+        return NULL;
+    }
+
+    process->mMappedView = MapViewOfFile(process->mSharedMemoryHandle,
+        FILE_MAP_ALL_ACCESS, 0, 0, TLIB_QUEUE_SIZE_IN_BYTES);
+
+    if (!process->mMappedView) {
+        tracerCoreDestroyContext(ctx);
+        return NULL;
+    }
+
+    process->mSharedRWQueue = tracerCreateRWQueue(process->mMappedView,
+        TLIB_QUEUE_SIZE_IN_BYTES, 1);
+
+    if (!process->mSharedRWQueue) {
         tracerCoreDestroyContext(ctx);
         return NULL;
     }
@@ -70,8 +88,8 @@ TracerContext* tracerGetLocalProcessContext(void) {
 
 static TracerBool tracerProcessLocalInit(TracerContext* ctx) {
     TracerLocalProcessContext* process = (TracerLocalProcessContext*)ctx;
-
     process->mTraceContext = tracerCreateVeTraceContext(eTracerTraceContextVEH, sizeof(TracerVeTraceContext));
+
     if (!process->mTraceContext) {
         return eTracerFalse;
     }
@@ -82,8 +100,10 @@ static TracerBool tracerProcessLocalInit(TracerContext* ctx) {
 static TracerBool tracerProcessLocalShutdown(TracerContext* ctx) {
     TracerLocalProcessContext* process = (TracerLocalProcessContext*)ctx;
 
-    tracerCoreDestroyContext(process->mTraceContext);
-    process->mTraceContext = NULL;
+    if (process->mTraceContext) {
+        tracerCoreDestroyContext(process->mTraceContext);
+        process->mTraceContext = NULL;
+    }
 
     return eTracerTrue;
 }

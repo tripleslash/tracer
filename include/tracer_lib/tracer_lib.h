@@ -112,6 +112,7 @@ typedef struct TracerAttachProcess {
     int             mSizeOfStruct;              ///< The size of the structure (in bytes).
     int             mProcessId;                 ///< The process id to which we should attach to.
                                                 ///< Set this to \c -1 to attach to the current process.
+    TracerHandle    mSharedMemoryHandle;        ///< A handle to a shared memory file mapping object.
 } TracerAttachProcess;
 
 /**

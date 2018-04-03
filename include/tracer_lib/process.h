@@ -3,10 +3,16 @@
 
 #include <tracer_lib/core.h>
 
+#define TLIB_IN_MEGABYTES                   1024*1024
+#define TLIB_QUEUE_SIZE_IN_BYTES            16*TLIB_IN_MEGABYTES
+
 typedef struct TracerProcessContext {
     TracerBaseContext           mBaseContext;
     int                         mProcessId;
     TracerContext*              mMemoryContext;
+    TracerHandle                mSharedMemoryHandle;
+    TracerHandle                mSharedRWQueue;
+    void*                       mMappedView;
 
     TracerBool(*mStartTrace)(TracerContext* ctx, const TracerStartTrace* startTrace);
 

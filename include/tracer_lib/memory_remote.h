@@ -7,8 +7,10 @@ typedef struct TracerRemoteMemoryContext {
     TracerMemoryContext             mBaseContext;
 } TracerRemoteMemoryContext;
 
-TracerContext* tracerCreateRemoteMemoryContext(int type, int size, int pid);
+TracerContext* tracerCreateRemoteMemoryContext(int type, int size, int pid, TracerHandle sharedMemoryHandle);
 
 void tracerCleanupRemoteMemoryContext(TracerContext* ctx);
+
+int tracerMemoryRemoteCallLocalExport(TracerContext* ctx, const char* exportName, const TracerStruct* parameter);
 
 #endif

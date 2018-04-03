@@ -95,13 +95,13 @@ static TracerBool tracerVeTraceStart(TracerContext* ctx, void* address, int thre
     char buf[256];
     sprintf(buf, "Started tracing at %p", tracerTestTrace);
     MessageBoxA(0, buf, "", MB_OK);
+
+    tracerTestTrace();
     return eTracerTrue;
 }
 
 static TracerBool tracerVeTraceStop(TracerContext* ctx, void* address, int threadId) {
-    tracerTestTrace();
-
-    printf("call depth %d", ((TracerVeTraceContext*)ctx)->mCallDepth);
+    MessageBoxA(0, "Stopped tracing", "", MB_OK);
     return eTracerFalse;
 }
 

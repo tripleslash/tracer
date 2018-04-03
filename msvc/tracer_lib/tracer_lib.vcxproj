@@ -259,6 +259,7 @@
     <ClCompile Include="..\..\src\tracer_lib\memory.c" />
     <ClCompile Include="..\..\src\tracer_lib\memory_local.c" />
     <ClCompile Include="..\..\src\tracer_lib\memory_remote.c" />
+    <ClCompile Include="..\..\src\tracer_lib\rwqueue.c" />
     <ClCompile Include="..\..\src\tracer_lib\process.c" />
     <ClCompile Include="..\..\src\tracer_lib\process_local.c" />
     <ClCompile Include="..\..\src\tracer_lib\process_remote.c" />
@@ -272,6 +273,7 @@
     <ClInclude Include="..\..\include\tracer_lib\memory.h" />
     <ClInclude Include="..\..\include\tracer_lib\memory_local.h" />
     <ClInclude Include="..\..\include\tracer_lib\memory_remote.h" />
+    <ClInclude Include="..\..\include\tracer_lib\rwqueue.h" />
     <ClInclude Include="..\..\include\tracer_lib\process.h" />
     <ClInclude Include="..\..\include\tracer_lib\process_local.h" />
     <ClInclude Include="..\..\include\tracer_lib\process_remote.h" />

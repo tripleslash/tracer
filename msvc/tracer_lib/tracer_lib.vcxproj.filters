@@ -48,6 +48,9 @@
     <ClInclude Include="..\..\include\tracer_lib\hwbp.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\include\tracer_lib\rwqueue.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\tracer_lib\core.c">
@@ -81,6 +84,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\tracer_lib\hwbp.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\tracer_lib\rwqueue.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
