@@ -2,9 +2,10 @@
 #define TLIB_PROCESS_H
 
 #include <tracer_lib/core.h>
+#include <tracer_lib/trace.h>
 
 #define TLIB_IN_MEGABYTES                   1024*1024
-#define TLIB_QUEUE_SIZE_IN_BYTES            16*TLIB_IN_MEGABYTES
+#define TLIB_SHARED_MEMORY_SIZE             16*TLIB_IN_MEGABYTES
 
 typedef struct TracerProcessContext {
     TracerBaseContext           mBaseContext;
@@ -30,5 +31,7 @@ TracerContext* tracerProcessGetMemoryContext(TracerContext* ctx);
 TracerBool tracerProcessStartTrace(TracerContext* ctx, const TracerStartTrace* startTrace);
 
 TracerBool tracerProcessStopTrace(TracerContext* ctx, const TracerStopTrace* stopTrace);
+
+size_t tracerProcessFetchTraces(TracerContext* ctx, TracerTracedInstruction* outTraces, size_t maxElements);
 
 #endif

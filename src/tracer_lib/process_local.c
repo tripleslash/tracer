@@ -48,16 +48,18 @@ TracerContext* tracerCreateLocalProcessContext(int type, int size, TracerHandle 
         return NULL;
     }
 
-    process->mMappedView = MapViewOfFile(process->mSharedMemoryHandle,
-        FILE_MAP_ALL_ACCESS, 0, 0, TLIB_QUEUE_SIZE_IN_BYTES);
+    if (process->mSharedMemoryHandle) {
+        process->mMappedView = MapViewOfFile(process->mSharedMemoryHandle,
+            FILE_MAP_ALL_ACCESS, 0, 0, TLIB_SHARED_MEMORY_SIZE);
 
-    if (!process->mMappedView) {
-        tracerCoreDestroyContext(ctx);
-        return NULL;
+        if (!process->mMappedView) {
+            tracerCoreDestroyContext(ctx);
+            return NULL;
+        }
     }
 
     process->mSharedRWQueue = tracerCreateRWQueue(process->mMappedView,
-        TLIB_QUEUE_SIZE_IN_BYTES, 1);
+        TLIB_SHARED_MEMORY_SIZE, sizeof(TracerTracedInstruction));
 
     if (!process->mSharedRWQueue) {
         tracerCoreDestroyContext(ctx);
@@ -87,10 +89,13 @@ TracerContext* tracerGetLocalProcessContext(void) {
 }
 
 static TracerBool tracerProcessLocalInit(TracerContext* ctx) {
-    TracerLocalProcessContext* process = (TracerLocalProcessContext*)ctx;
-    process->mTraceContext = tracerCreateVeTraceContext(eTracerTraceContextVEH, sizeof(TracerVeTraceContext));
+    TracerProcessContext* process = (TracerProcessContext*)ctx;
+    TracerLocalProcessContext* local = (TracerLocalProcessContext*)ctx;
 
-    if (!process->mTraceContext) {
+    local->mTraceContext = tracerCreateVeTraceContext(eTracerTraceContextVEH,
+        sizeof(TracerVeTraceContext), process->mSharedRWQueue);
+
+    if (!local->mTraceContext) {
         return eTracerFalse;
     }
 

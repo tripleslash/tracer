@@ -127,6 +127,8 @@ static DWORD gTracerLastErrorTlsIndex;
 static DWORD gTracerProcessContextTlsIndex;
 static DWORD gTracerActiveHwBreakpointTlsIndex;
 static DWORD gTracerSuspendedHwBreakpointTlsIndex;
+static DWORD gTracerBranchCallDepthTlsIndex;
+static DWORD gTracerCurrentTraceIdTlsIndex;
 
 static TracerHandle gTracerModuleHandle;
 
@@ -166,6 +168,38 @@ int tracerCoreGetSuspendedHwBreakpointIndex() {
 
 void tracerCoreSetSuspendedHwBreakpointIndex(int index) {
     TlsSetValue(gTracerSuspendedHwBreakpointTlsIndex, (LPVOID)(index + 1));
+}
+
+int tracerCoreGetCurrentTraceId() {
+    return (int)TlsGetValue(gTracerCurrentTraceIdTlsIndex);
+}
+
+void tracerCoreOnBeginNewTrace(int breakpointIndex) {
+    tracerCoreSetActiveHwBreakpointIndex(breakpointIndex);
+    TlsSetValue(gTracerBranchCallDepthTlsIndex, (LPVOID)0);
+
+    int traceId = tracerCoreGetCurrentTraceId() + 1;
+    TlsSetValue(gTracerCurrentTraceIdTlsIndex, (LPVOID)traceId);
+}
+
+void tracerCoreOnTraceEnded() {
+    tracerCoreSetActiveHwBreakpointIndex(-1);
+}
+
+int tracerCoreGetBranchCallDepth() {
+    return (int)TlsGetValue(gTracerBranchCallDepthTlsIndex);
+}
+
+int tracerCoreOnBranchEntered() {
+    int callDepth = tracerCoreGetBranchCallDepth() + 1;
+    TlsSetValue(gTracerBranchCallDepthTlsIndex, (LPVOID)callDepth);
+    return callDepth;
+}
+
+int tracerCoreOnBranchReturned() {
+    int callDepth = tracerCoreGetBranchCallDepth() - 1;
+    TlsSetValue(gTracerBranchCallDepthTlsIndex, (LPVOID)callDepth);
+    return callDepth;
 }
 
 typedef struct TracerEnumWindowsParams {
@@ -334,11 +368,15 @@ BOOL WINAPI DllMain(HINSTANCE instance, DWORD reason, LPVOID reserved) {
         gTracerProcessContextTlsIndex = TlsAlloc();
         gTracerActiveHwBreakpointTlsIndex = TlsAlloc();
         gTracerSuspendedHwBreakpointTlsIndex = TlsAlloc();
+        gTracerBranchCallDepthTlsIndex = TlsAlloc();
+        gTracerCurrentTraceIdTlsIndex = TlsAlloc();
 
         if (gTracerLastErrorTlsIndex == TLS_OUT_OF_INDEXES ||
             gTracerProcessContextTlsIndex == TLS_OUT_OF_INDEXES ||
             gTracerActiveHwBreakpointTlsIndex == TLS_OUT_OF_INDEXES ||
-            gTracerSuspendedHwBreakpointTlsIndex == TLS_OUT_OF_INDEXES) {
+            gTracerSuspendedHwBreakpointTlsIndex == TLS_OUT_OF_INDEXES ||
+            gTracerBranchCallDepthTlsIndex == TLS_OUT_OF_INDEXES ||
+            gTracerCurrentTraceIdTlsIndex == TLS_OUT_OF_INDEXES) {
 
             return FALSE;
         }
@@ -348,6 +386,8 @@ BOOL WINAPI DllMain(HINSTANCE instance, DWORD reason, LPVOID reserved) {
         TlsFree(gTracerProcessContextTlsIndex);
         TlsFree(gTracerActiveHwBreakpointTlsIndex);
         TlsFree(gTracerSuspendedHwBreakpointTlsIndex);
+        TlsFree(gTracerBranchCallDepthTlsIndex);
+        TlsFree(gTracerCurrentTraceIdTlsIndex);
 
         DeleteCriticalSection(&gProcessContextCritSect);
         DeleteCriticalSection(&gLinkedListCritSect);

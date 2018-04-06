@@ -55,7 +55,7 @@ TracerContext* tracerCreateRemoteProcessContext(int type, int size, int pid) {
     }
 
     process->mMappedView = MapViewOfFile(process->mSharedMemoryHandle,
-        FILE_MAP_ALL_ACCESS, 0, 0, TLIB_QUEUE_SIZE_IN_BYTES);
+        FILE_MAP_ALL_ACCESS, 0, 0, TLIB_SHARED_MEMORY_SIZE);
 
     if (!process->mMappedView) {
         tracerCoreDestroyContext(ctx);
@@ -63,7 +63,7 @@ TracerContext* tracerCreateRemoteProcessContext(int type, int size, int pid) {
     }
 
     process->mSharedRWQueue = tracerCreateRWQueue(process->mMappedView,
-        TLIB_QUEUE_SIZE_IN_BYTES, 1);
+        TLIB_SHARED_MEMORY_SIZE, sizeof(TracerTracedInstruction));
 
     if (!process->mSharedRWQueue) {
         tracerCoreDestroyContext(ctx);
@@ -105,7 +105,7 @@ static TracerBool tracerProcessRemoteCreateFileMapping(TracerContext* ctx,
     TracerBool success = eTracerFalse;
 
     HANDLE fileMapping = CreateFileMapping(INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE, 0,
-        TLIB_QUEUE_SIZE_IN_BYTES, NULL);
+        TLIB_SHARED_MEMORY_SIZE, NULL);
 
     if (fileMapping) {
 

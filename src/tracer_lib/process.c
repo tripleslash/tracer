@@ -84,3 +84,11 @@ TracerBool tracerProcessStopTrace(TracerContext* ctx, const TracerStopTrace* sto
     TLIB_METHOD_CHECK_SUPPORT(process->mStopTrace, eTracerFalse);
     return process->mStopTrace(ctx, stopTrace);
 }
+
+size_t tracerProcessFetchTraces(TracerContext* ctx, TracerTracedInstruction* outTraces, size_t maxElements) {
+    if (!tracerCoreValidateContext(ctx, eTracerProcessContext)) {
+        return 0;
+    }
+    TracerProcessContext* process = (TracerProcessContext*)ctx;
+    return tracerRWQueuePopAll(process->mSharedRWQueue, outTraces, maxElements);
+}

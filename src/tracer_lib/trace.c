@@ -34,7 +34,6 @@ TracerBool tracerTraceStart(TracerContext* ctx, void* address, int threadId) {
     if (!tracerCoreValidateContext(ctx, eTracerTraceContext)) {
         return eTracerFalse;
     }
-
     TracerTraceContext* trace = (TracerTraceContext*)ctx;
     TLIB_METHOD_CHECK_SUPPORT(trace->mStartTrace, eTracerFalse);
     return trace->mStartTrace(ctx, address, threadId);
@@ -44,7 +43,6 @@ TracerBool tracerTraceStop(TracerContext* ctx, void* address, int threadId) {
     if (!tracerCoreValidateContext(ctx, eTracerTraceContext)) {
         return eTracerFalse;
     }
-
     TracerTraceContext* trace = (TracerTraceContext*)ctx;
     TLIB_METHOD_CHECK_SUPPORT(trace->mStopTrace, eTracerFalse);
     return trace->mStopTrace(ctx, address, threadId);

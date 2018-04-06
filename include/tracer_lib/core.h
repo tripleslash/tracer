@@ -3,6 +3,7 @@
 #define TLIB_CORE_H
 
 #define TLIB_CORE_COMPILING_DLL 1
+#define _CRT_SECURE_NO_WARNINGS 1
 
 #include <tracer_lib/tracer_lib.h>
 
@@ -91,6 +92,18 @@ void tracerCoreSetActiveHwBreakpointIndex(int index);
 int tracerCoreGetSuspendedHwBreakpointIndex();
 
 void tracerCoreSetSuspendedHwBreakpointIndex(int index);
+
+int tracerCoreGetCurrentTraceId();
+
+void tracerCoreOnBeginNewTrace(int breakpointIndex);
+
+void tracerCoreOnTraceEnded();
+
+int tracerCoreGetBranchCallDepth();
+
+int tracerCoreOnBranchEntered();
+
+int tracerCoreOnBranchReturned();
 
 TracerHandle tracerCoreFindWindow(int processId);
 

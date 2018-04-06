@@ -278,3 +278,25 @@ TLIB_API TracerBool TLIB_CALL tracerStopTraceEx(TracerStopTrace* stopTrace) {
     tracerCoreReleaseProcessContextLock();
     return result;
 }
+
+TLIB_API size_t TLIB_CALL tracerFetchTraces(TracerTracedInstruction* outTraces, size_t maxElements) {
+    tracerCoreSetLastError(eTracerErrorSuccess);
+
+    if (!outTraces || !maxElements) {
+        tracerCoreSetLastError(eTracerErrorInvalidArgument);
+        return 0;
+    }
+
+    size_t result = 0;
+    tracerCoreAcquireProcessContextLock();
+
+    TracerContext* ctx = tracerCoreGetProcessContext();
+    if (ctx) {
+        result = tracerProcessFetchTraces(ctx, outTraces, maxElements);
+    } else {
+        tracerCoreSetLastError(eTracerErrorNotImplemented);
+    }
+
+    tracerCoreReleaseProcessContextLock();
+    return result;
+}

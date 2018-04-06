@@ -1,6 +1,8 @@
 #ifndef TRACER_H
 #define TRACER_H
 
+#include <stdint.h>
+
 #define TLIB_VERSION                    100
 
 #if defined(_MSC_VER)
@@ -76,7 +78,7 @@ typedef enum TracerError {
  * @brief   Internal helper type. Used as basis for all structures.
  */
 typedef struct TracerStruct {
-    int             mSizeOfStruct;              ///< The size of the structure (in bytes).
+    int                                 mSizeOfStruct;              ///< The size of the structure (in bytes).
 } TracerStruct;
 
 /**
@@ -86,10 +88,10 @@ typedef struct TracerStruct {
  * @see     tracerInitEx
  */
 typedef struct TracerInit {
-    int             mSizeOfStruct;              ///< The size of the structure (in bytes).
-    int             mVersion;                   ///< Should be set to \ref TLIB_VERSION.
-    TracerBool      mAcquireSeDebugPrivilege;   ///< Set this to \ref eTracerFalse if you don't want the
-                                                ///< library to request the SeDebugPrivilege.
+    int                                 mSizeOfStruct;              ///< The size of the structure (in bytes).
+    int                                 mVersion;                   ///< Should be set to \ref TLIB_VERSION.
+    TracerBool                          mAcquireSeDebugPrivilege;   ///< Set this to \ref eTracerFalse if you don't want the
+                                                                    ///< library to request the SeDebugPrivilege.
 } TracerInit;
 
 /**
@@ -99,7 +101,7 @@ typedef struct TracerInit {
  * @see     tracerShutdownEx
  */
 typedef struct TracerShutdown {
-    int             mSizeOfStruct;              ///< The size of the structure (in bytes).
+    int                                 mSizeOfStruct;              ///< The size of the structure (in bytes).
 } TracerShutdown;
 
 /**
@@ -109,29 +111,52 @@ typedef struct TracerShutdown {
  * @see     tracerAttachProcessEx
  */
 typedef struct TracerAttachProcess {
-    int             mSizeOfStruct;              ///< The size of the structure (in bytes).
-    int             mProcessId;                 ///< The process id to which we should attach to.
-                                                ///< Set this to \c -1 to attach to the current process.
-    TracerHandle    mSharedMemoryHandle;        ///< A handle to a shared memory file mapping object.
+    int                                 mSizeOfStruct;              ///< The size of the structure (in bytes).
+    int                                 mProcessId;                 ///< The process id to which we should attach to.
+                                                                    ///< Set this to \c -1 to attach to the current process.
+    TracerHandle                        mSharedMemoryHandle;        ///< A handle to a shared memory file mapping object.
 } TracerAttachProcess;
 
 /**
-* TODO: comment
-*/
+ * TODO: comment
+ */
 typedef struct TracerStartTrace {
-    int             mSizeOfStruct;              ///< The size of the structure (in bytes).
-    int             mThreadId;                  ///< The thread id that should be traced (-1 for all threads).
-    void*           mAddress;                   ///< The address of the function to trace.
+    int                                 mSizeOfStruct;              ///< The size of the structure (in bytes).
+    int                                 mThreadId;                  ///< The thread id that should be traced (-1 for all threads).
+    void*                               mAddress;                   ///< The address of the function to trace.
 } TracerStartTrace;
 
 /**
-* TODO: comment
-*/
+ * TODO: comment
+ */
 typedef struct TracerStopTrace {
-    int             mSizeOfStruct;              ///< The size of the structure (in bytes).
-    int             mThreadId;                  ///< The thread id that should be traced (-1 for all threads).
-    void*           mAddress;                   ///< The address of the function to trace.
+    int                                 mSizeOfStruct;              ///< The size of the structure (in bytes).
+    int                                 mThreadId;                  ///< The thread id that should be traced (-1 for all threads).
+    void*                               mAddress;                   ///< The address of the function to trace.
 } TracerStopTrace;
+
+/**
+ * TODO: comment
+ */
+typedef enum TracerTracedInstructionType {
+    eTracerNodeTypeBranch               = 0,
+    eTracerNodeTypeCall                 = 1,
+    eTracerNodeTypeReturn               = 2,
+} TracerTracedInstructionType;
+
+#define TLIB_MAX_DECODED_INST_LENGTH    32
+
+/**
+ * TODO: comment
+ */
+typedef struct TracerTracedInstruction {
+    TracerTracedInstructionType         mType;
+    int                                 mTraceId;
+    int                                 mThreadId;
+    int                                 mCallDepth;
+    uintptr_t                           mAddress;
+    char                                mDecodedInst[TLIB_MAX_DECODED_INST_LENGTH];
+} TracerTracedInstruction;
 
 /**
 * @brief   A context is the equivalent to a class in this lib.
@@ -316,6 +341,8 @@ TLIB_API TracerBool TLIB_CALL tracerStartTraceEx(TracerStartTrace* startTrace);
 TLIB_API TracerBool TLIB_CALL tracerStopTrace(void* functionAddress, int threadId TLIB_ARG(-1));
 
 TLIB_API TracerBool TLIB_CALL tracerStopTraceEx(TracerStopTrace* stopTrace);
+
+TLIB_API size_t TLIB_CALL tracerFetchTraces(TracerTracedInstruction* outTraces, size_t maxElements);
 
 #ifdef __cplusplus
 }
