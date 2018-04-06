@@ -23,7 +23,7 @@ typedef struct TracerVeTraceContext {
     ZydisDecoder                mDecoder;
     ZydisFormatter              mFormatter;
     TracerActiveTrace*          mActiveTraces;
-    int                         mCallDepth;
+    int                         mMaxCallDepth;
 } TracerVeTraceContext;
 
 TracerContext* tracerCreateVeTraceContext(int type, int size, TracerHandle traceQueue);

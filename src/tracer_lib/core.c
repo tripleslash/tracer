@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#include <Zydis/Zydis.h>
+
 /*
  *
  * Base context functions
@@ -191,14 +193,14 @@ int tracerCoreGetBranchCallDepth() {
 }
 
 int tracerCoreOnBranchEntered() {
-    int callDepth = tracerCoreGetBranchCallDepth() + 1;
-    TlsSetValue(gTracerBranchCallDepthTlsIndex, (LPVOID)callDepth);
+    int callDepth = tracerCoreGetBranchCallDepth();
+    TlsSetValue(gTracerBranchCallDepthTlsIndex, (LPVOID)(callDepth + 1));
     return callDepth;
 }
 
 int tracerCoreOnBranchReturned() {
-    int callDepth = tracerCoreGetBranchCallDepth() - 1;
-    TlsSetValue(gTracerBranchCallDepthTlsIndex, (LPVOID)callDepth);
+    int callDepth = tracerCoreGetBranchCallDepth();
+    TlsSetValue(gTracerBranchCallDepthTlsIndex, (LPVOID)(callDepth - 1));
     return callDepth;
 }
 

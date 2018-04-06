@@ -49,6 +49,7 @@ TracerContext* tracerCreateVeTraceContext(int type, int size, TracerHandle trace
 
     TracerVeTraceContext* veTrace = (TracerVeTraceContext*)ctx;
     veTrace->mSharedRWQueue = traceQueue;
+    veTrace->mMaxCallDepth = 3;
 
     if (!tracerVeTraceInit(ctx)) {
         tracerCoreDestroyContext(ctx);
@@ -270,6 +271,24 @@ static TracerBool tracerVeTraceIsAddressInExcludedModule(TracerContext* ctx, uin
     return eTracerTrue;
 }
 
+static TracerBool tracerVeShouldSuspendCurrentTrace(TracerContext* ctx, uintptr_t address) {
+    TracerVeTraceContext* trace = (TracerVeTraceContext*)ctx;
+
+    if (tracerVeTraceIsAddressInExcludedModule(ctx, address)) {
+        return eTracerTrue;
+    }
+
+    if (trace->mMaxCallDepth > 0) {
+        // We set a limit to the maximum depth of calls to trace
+
+        if (tracerCoreGetBranchCallDepth() >= trace->mMaxCallDepth) {
+            return eTracerTrue;
+        }
+    }
+
+    return eTracerFalse;
+}
+
 static TracerBool tracerVeTraceIsTraceStartAddress(TracerContext* ctx, uintptr_t address) {
     TracerVeTraceContext* trace = (TracerVeTraceContext*)ctx;
 
@@ -287,61 +306,78 @@ static TracerBool tracerVeTraceIsTraceStartAddress(TracerContext* ctx, uintptr_t
     return eTracerFalse;
 }
 
-static TracerBool tracerVeTraceInstruction(TracerContext* ctx, void* address) {
+static TracerBool tracerVeTraceInstruction(TracerContext* ctx, PEXCEPTION_POINTERS ex, void** resumeAddress) {
     TracerVeTraceContext* trace = (TracerVeTraceContext*)ctx;
 
-    if (!address) {
+    uintptr_t lastBranchAddress = ex->ExceptionRecord->ExceptionInformation[0];
+
+    if (!lastBranchAddress) {
+        *resumeAddress = ex->ExceptionRecord->ExceptionAddress;
         return eTracerTrue;
     }
 
     ZydisDecodedInstruction decodedInst;
-    if (ZydisDecoderDecodeBuffer(&trace->mDecoder, address,
-            ZYDIS_MAX_INSTRUCTION_LENGTH, 0, &decodedInst) != ZYDIS_STATUS_SUCCESS) {
+
+    if (ZydisDecoderDecodeBuffer(
+            &trace->mDecoder,
+            (void*)lastBranchAddress,
+            ZYDIS_MAX_INSTRUCTION_LENGTH,
+            lastBranchAddress,
+            &decodedInst) != ZYDIS_STATUS_SUCCESS) {
 
         return eTracerFalse;
     }
+
+    TracerBool continueTrace = eTracerFalse;
 
     TracerTracedInstruction inst;
     inst.mTraceId = tracerCoreGetCurrentTraceId();
     inst.mThreadId = (int)GetCurrentThreadId();
-    inst.mAddress = (uintptr_t)address;
+    inst.mAddress = lastBranchAddress;
 
-    if (ZydisFormatterFormatInstruction(&trace->mFormatter, &decodedInst,
-            inst.mDecodedInst, sizeof(inst.mDecodedInst)) != ZYDIS_STATUS_SUCCESS) {
-
-        return eTracerFalse;
-    }
-
-    switch (decodedInst.mnemonic) {
-    case ZYDIS_MNEMONIC_CALL:
+    switch (decodedInst.meta.category) {
+    case ZYDIS_CATEGORY_CALL:
         inst.mType = eTracerNodeTypeCall;
         inst.mCallDepth = tracerCoreOnBranchEntered();
+        continueTrace = (inst.mCallDepth >= 0);
+
+        *resumeAddress = *(void**)ex->ContextRecord->Esp;
         break;
-    case ZYDIS_MNEMONIC_RET:
-    case ZYDIS_MNEMONIC_IRET:
-    case ZYDIS_MNEMONIC_IRETD:
-    case ZYDIS_MNEMONIC_IRETQ:
-    case ZYDIS_MNEMONIC_RSM:
+    case ZYDIS_CATEGORY_RET:
         inst.mType = eTracerNodeTypeReturn;
         inst.mCallDepth = tracerCoreOnBranchReturned();
+        continueTrace = (inst.mCallDepth > 0);
+
+        *resumeAddress = (void*)ex->ContextRecord->Eip;
         break;
     default:
         inst.mType = eTracerNodeTypeBranch;
         inst.mCallDepth = tracerCoreGetBranchCallDepth();
+        continueTrace = (inst.mCallDepth >= 0);
+
+        *resumeAddress = (void*)ex->ContextRecord->Eip;
+    }
+
+    if (ZydisFormatterFormatInstruction(
+            &trace->mFormatter,
+            &decodedInst,
+            inst.mDecodedInst,
+            sizeof(inst.mDecodedInst)) != ZYDIS_STATUS_SUCCESS) {
+
+        return eTracerFalse;
     }
 
     while (!tracerRWQueuePushItem(trace->mSharedRWQueue, &inst)) {
         Sleep(1);
     }
 
-    return inst.mCallDepth >= 0;
+    return continueTrace;
 }
 
 static LONG CALLBACK tracerVeTraceHandler(PEXCEPTION_POINTERS ex) {
     TracerLocalProcessContext* process = (TracerLocalProcessContext*)tracerGetLocalProcessContext();
 
     uintptr_t exceptionAddr = (uintptr_t)ex->ExceptionRecord->ExceptionAddress;
-    uintptr_t lastBranchRecord = ex->ExceptionRecord->ExceptionInformation[0];
 
     switch (ex->ExceptionRecord->ExceptionCode) {
     case EXCEPTION_SINGLE_STEP:
@@ -405,11 +441,13 @@ static LONG CALLBACK tracerVeTraceHandler(PEXCEPTION_POINTERS ex) {
             tracerCoreOnBranchReturned();
         }
 
+        void* resumeAddr = NULL;
+
         // If this function returns false it means that the tracing for the current
         // thread should be disabled. In this case we remove the branch trace flags.
-        if (tracerVeTraceInstruction(process->mTraceContext, (void*)lastBranchRecord)) {
+        if (tracerVeTraceInstruction(process->mTraceContext, ex, &resumeAddr)) {
 
-            if (tracerVeTraceIsAddressInExcludedModule(process->mTraceContext, exceptionAddr)) {
+            if (tracerVeShouldSuspendCurrentTrace(process->mTraceContext, exceptionAddr)) {
                 // We are not interested in tracing calls inside windows libraries.
 
                 // We suspend tracing by temporarily adding a hardware breakpoint on the place  that the call
@@ -417,10 +455,7 @@ static LONG CALLBACK tracerVeTraceHandler(PEXCEPTION_POINTERS ex) {
 
                 // Once the resume hardware breakpoint is triggered, the breakpoint is removed and the tracing
                 // will continue.
-                void* returnAddress = *(void**)ex->ContextRecord->Esp;
-
-                resumeIndex = tracerSetHwBreakpointOnContext(returnAddress,
-                    1, ex->ContextRecord, eTracerBpCondExecute);
+                resumeIndex = tracerSetHwBreakpointOnContext(resumeAddr, 1, ex->ContextRecord, eTracerBpCondExecute);
 
                 // We remember the breakpoint index for this suspended trace by storing it in the threads TLS
                 // data.
