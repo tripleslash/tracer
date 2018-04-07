@@ -118,6 +118,7 @@ static TracerBool tracerVeFindModuleBoundsForAddress(uintptr_t address, uintptr_
                     // The snapshot contained a process ID that we aren't even looking for
                     continue;
                 }
+
                 TracerHandle module = (TracerHandle)entry.hModule;
 
                 if (!module || module == INVALID_HANDLE_VALUE) {
@@ -130,10 +131,12 @@ static TracerBool tracerVeFindModuleBoundsForAddress(uintptr_t address, uintptr_
                 uintptr_t baseOfCode = (uintptr_t)module + ntHeader->OptionalHeader.BaseOfCode;
                 uintptr_t sizeOfCode = ntHeader->OptionalHeader.SizeOfCode;
 
-                if (address >= baseOfCode && address < baseOfCode + sizeOfCode) {
+                TracerBool isAddressWithinModuleBounds =
+                    (address >= baseOfCode && address < baseOfCode + sizeOfCode);
+
+                if (isAddressWithinModuleBounds) {
                     moduleBaseOfCode = baseOfCode;
                     moduleSizeOfCode = sizeOfCode;
-
                     break;
                 }
 
@@ -143,17 +146,10 @@ static TracerBool tracerVeFindModuleBoundsForAddress(uintptr_t address, uintptr_
         CloseHandle(snapshot);
     }
 
-    if (!moduleBaseOfCode || !moduleSizeOfCode) {
-        return eTracerFalse;
-    }
+    *outBaseOfCode = moduleBaseOfCode;
+    *outSizeOfCode = moduleSizeOfCode;
 
-    if (outBaseOfCode) {
-        *outBaseOfCode = moduleBaseOfCode;
-    }
-    if (outSizeOfCode) {
-        *outSizeOfCode = moduleSizeOfCode;
-    }
-    return eTracerTrue;
+    return moduleBaseOfCode != 0 && moduleSizeOfCode != 0;
 }
 
 static TracerBool tracerVeTraceStart(TracerContext* ctx, void* address, int threadId, int maxTraceDepth, int lifetime) {
@@ -169,6 +165,11 @@ static TracerBool tracerVeTraceStart(TracerContext* ctx, void* address, int thre
         return eTracerFalse;
     }
 
+    // Need to lock before setting the breakpoint because a thread might trigger the breakpoint
+    // immediately after its set. He will then be forced to wait on the mutex until we are done here.
+    TracerVeTraceContext* trace = (TracerVeTraceContext*)ctx;
+    EnterCriticalSection(&trace->mTraceCritSect);
+
     TracerHandle breakpoint = NULL;
 
     if (threadId >= 0) {
@@ -178,6 +179,8 @@ static TracerBool tracerVeTraceStart(TracerContext* ctx, void* address, int thre
     }
 
     if (!breakpoint) {
+        LeaveCriticalSection(&trace->mTraceCritSect);
+
         tracerCoreSetLastError(eTracerErrorOutOfResources);
         return eTracerFalse;
     }
@@ -186,12 +189,11 @@ static TracerBool tracerVeTraceStart(TracerContext* ctx, void* address, int thre
     if (!activeTrace) {
         tracerRemoveHwBreakpoint(breakpoint);
 
+        LeaveCriticalSection(&trace->mTraceCritSect);
+
         tracerCoreSetLastError(eTracerErrorNotEnoughMemory);
         return eTracerFalse;
     }
-
-    TracerVeTraceContext* trace = (TracerVeTraceContext*)ctx;
-    EnterCriticalSection(&trace->mTraceCritSect);
 
     activeTrace->mStartAddress = address;
     activeTrace->mBaseOfCode = baseOfCode;
@@ -203,6 +205,7 @@ static TracerBool tracerVeTraceStart(TracerContext* ctx, void* address, int thre
     activeTrace->mNextLink = trace->mActiveTraces;
 
     trace->mActiveTraces = activeTrace;
+
     LeaveCriticalSection(&trace->mTraceCritSect);
 
     return eTracerTrue;
