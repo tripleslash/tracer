@@ -401,3 +401,40 @@ TracerBool tracerRemoveHwBreakpoint(TracerHandle handle) {
 
     return result;
 }
+
+TracerBool tracerRemoveHwBreakpointOnContext(TracerHandle handle, PCONTEXT ctx) {
+    TracerHwBreakpoint* breakpoint = (TracerHwBreakpoint*)handle;
+
+    if (!breakpoint) {
+        tracerCoreSetLastError(eTracerErrorInvalidArgument);
+        return eTracerFalse;
+    }
+
+    TracerBool result = eTracerTrue;
+
+    do {
+
+        // Each breakpoint handle can involve multiple threads, so we need to remove the breakpoint on each of them
+        TracerHwBreakpoint* next = breakpoint->mNextLink;
+        breakpoint->mNextLink = NULL;
+
+        if (breakpoint->mThreadId == -1 ||
+            breakpoint->mThreadId == (int)GetCurrentThreadId()) {
+
+            // Only need to clear the debug control bits for this breakpoint
+            tracerHwBreakpointSetBits(&ctx->Dr7, breakpoint->mIndex << 1, 1, 0);
+
+            free(breakpoint);
+
+        } else {
+            if (!tracerRemoveHwBreakpointOnForeignThread((TracerHandle)breakpoint)) {
+                result = eTracerFalse;
+            }
+        }
+
+        breakpoint = next;
+
+    } while (breakpoint);
+
+    return result;
+}

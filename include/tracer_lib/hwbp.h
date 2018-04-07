@@ -22,4 +22,6 @@ TracerHandle tracerSetHwBreakpointGlobal(void* address, int length, TracerHwBpCo
 
 TracerBool tracerRemoveHwBreakpoint(TracerHandle breakpoint);
 
+TracerBool tracerRemoveHwBreakpointOnContext(TracerHandle breakpoint, PCONTEXT ctx);
+
 #endif

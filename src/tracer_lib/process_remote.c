@@ -146,10 +146,14 @@ static TracerBool tracerProcessRemoteCreateFileMapping(TracerContext* ctx,
 
 static TracerBool tracerProcessRemoteStartTrace(TracerContext* ctx, const TracerStartTrace* startTrace) {
     TracerProcessContext* process = (TracerProcessContext*)ctx;
-    return (TracerBool)tracerMemoryRemoteCallLocalExport(process->mMemoryContext, "tracerStartTraceEx", (const TracerStruct*)startTrace);
+
+    return (TracerBool)tracerMemoryRemoteCallLocalExport(
+        process->mMemoryContext, "tracerStartTraceEx", (const TracerStruct*)startTrace);
 }
 
 static TracerBool tracerProcessRemoteStopTrace(TracerContext* ctx, const TracerStopTrace* stopTrace) {
     TracerProcessContext* process = (TracerProcessContext*)ctx;
-    return (TracerBool)tracerMemoryRemoteCallLocalExport(process->mMemoryContext, "tracerStopTraceEx", (const TracerStruct*)stopTrace);
+
+    return (TracerBool)tracerMemoryRemoteCallLocalExport(
+        process->mMemoryContext, "tracerStopTraceEx", (const TracerStruct*)stopTrace);
 }

@@ -6,7 +6,7 @@
 typedef struct TracerTraceContext {
     TracerBaseContext           mBaseContext;
 
-    TracerBool(*mStartTrace)(TracerContext* ctx, void* address, int threadId);
+    TracerBool(*mStartTrace)(TracerContext* ctx, void* address, int threadId, int maxTraceDepth, int lifetime);
 
     TracerBool(*mStopTrace)(TracerContext* ctx, void* address, int threadId);
 } TracerTraceContext;
@@ -15,7 +15,7 @@ TracerContext* tracerCreateTraceContext(int type, int size);
 
 void tracerCleanupTraceContext(TracerContext* ctx);
 
-TracerBool tracerTraceStart(TracerContext* ctx, void* address, int threadId);
+TracerBool tracerTraceStart(TracerContext* ctx, void* address, int threadId, int maxTraceDepth, int lifetime);
 
 TracerBool tracerTraceStop(TracerContext* ctx, void* address, int threadId);
 

@@ -24,7 +24,7 @@ static TracerBool tracerVeTraceInit(TracerContext* ctx);
 
 static TracerBool tracerVeTraceShutdown(TracerContext* ctx);
 
-static TracerBool tracerVeTraceStart(TracerContext* ctx, void* address, int threadId);
+static TracerBool tracerVeTraceStart(TracerContext* ctx, void* address, int threadId, int maxTraceDepth, int lifetime);
 
 static TracerBool tracerVeTraceStop(TracerContext* ctx, void* address, int threadId);
 
@@ -49,7 +49,6 @@ TracerContext* tracerCreateVeTraceContext(int type, int size, TracerHandle trace
 
     TracerVeTraceContext* veTrace = (TracerVeTraceContext*)ctx;
     veTrace->mSharedRWQueue = traceQueue;
-    veTrace->mMaxCallDepth = 3;
 
     if (!tracerVeTraceInit(ctx)) {
         tracerCoreDestroyContext(ctx);
@@ -69,6 +68,7 @@ void tracerCleanupVeTraceContext(TracerContext* ctx) {
 
 static TracerBool tracerVeTraceInit(TracerContext* ctx) {
     TracerVeTraceContext* trace = (TracerVeTraceContext*)ctx;
+    InitializeCriticalSection(&trace->mTraceCritSect);
 
     if (ZydisDecoderInit(&trace->mDecoder, ZYDIS_MACHINE_MODE_LONG_COMPAT_32, ZYDIS_ADDRESS_WIDTH_32) != ZYDIS_STATUS_SUCCESS) {
         return eTracerFalse;
@@ -95,6 +95,7 @@ static TracerBool tracerVeTraceShutdown(TracerContext* ctx) {
         trace->mAddVehHandle = NULL;
     }
 
+    DeleteCriticalSection(&trace->mTraceCritSect);
     return eTracerTrue;
 }
 
@@ -155,7 +156,7 @@ static TracerBool tracerVeFindModuleBoundsForAddress(uintptr_t address, uintptr_
     return eTracerTrue;
 }
 
-static TracerBool tracerVeTraceStart(TracerContext* ctx, void* address, int threadId) {
+static TracerBool tracerVeTraceStart(TracerContext* ctx, void* address, int threadId, int maxTraceDepth, int lifetime) {
     if (!tracerCoreValidateContext(ctx, eTracerTraceContextVEH)) {
         return eTracerFalse;
     }
@@ -190,15 +191,19 @@ static TracerBool tracerVeTraceStart(TracerContext* ctx, void* address, int thre
     }
 
     TracerVeTraceContext* trace = (TracerVeTraceContext*)ctx;
+    EnterCriticalSection(&trace->mTraceCritSect);
 
     activeTrace->mStartAddress = address;
     activeTrace->mBaseOfCode = baseOfCode;
     activeTrace->mSizeOfCode = sizeOfCode;
     activeTrace->mThreadId = threadId;
+    activeTrace->mMaxTraceDepth = maxTraceDepth;
+    activeTrace->mLifetime = lifetime;
     activeTrace->mBreakpoint = breakpoint;
     activeTrace->mNextLink = trace->mActiveTraces;
 
     trace->mActiveTraces = activeTrace;
+    LeaveCriticalSection(&trace->mTraceCritSect);
 
     return eTracerTrue;
 }
@@ -209,6 +214,7 @@ static TracerBool tracerVeTraceStop(TracerContext* ctx, void* address, int threa
     }
 
     TracerVeTraceContext* trace = (TracerVeTraceContext*)ctx;
+    EnterCriticalSection(&trace->mTraceCritSect);
 
     TracerActiveTrace* prev = NULL;
     TracerActiveTrace* activeTrace = trace->mActiveTraces;
@@ -227,6 +233,10 @@ static TracerBool tracerVeTraceStop(TracerContext* ctx, void* address, int threa
                 trace->mActiveTraces = next;
             }
 
+            if (trace->mCurrentTrace == activeTrace) {
+                trace->mCurrentTrace = NULL;
+            }
+
             free(activeTrace);
             activeTrace = NULL;
         }
@@ -237,7 +247,42 @@ static TracerBool tracerVeTraceStop(TracerContext* ctx, void* address, int threa
         activeTrace = next;
     }
 
+    LeaveCriticalSection(&trace->mTraceCritSect);
     return eTracerFalse;
+}
+
+static void tracerVeRemoveCurrentTrace(TracerContext* ctx, PCONTEXT registers) {
+    if (!tracerCoreValidateContext(ctx, eTracerTraceContextVEH)) {
+        return;
+    }
+
+    TracerVeTraceContext* trace = (TracerVeTraceContext*)ctx;
+    TracerActiveTrace* currentTrace = trace->mCurrentTrace;
+
+    TracerActiveTrace* prev = NULL;
+    TracerActiveTrace* activeTrace = trace->mActiveTraces;
+
+    while (activeTrace) {
+        TracerActiveTrace* next = activeTrace->mNextLink;
+
+        if (activeTrace == currentTrace) {
+            tracerRemoveHwBreakpointOnContext(activeTrace->mBreakpoint, registers);
+
+            if (prev) {
+                prev->mNextLink = next;
+            } else {
+                trace->mActiveTraces = next;
+            }
+
+            free(activeTrace);
+            break;
+        }
+
+        prev = activeTrace;
+        activeTrace = next;
+    }
+
+    trace->mCurrentTrace = NULL;
 }
 
 static void tracerVeTraceSetFlags(PCONTEXT context, TracerBool enable) {
@@ -252,36 +297,26 @@ static void tracerVeTraceSetFlags(PCONTEXT context, TracerBool enable) {
     }
 }
 
-static TracerBool tracerVeTraceIsAddressInExcludedModule(TracerContext* ctx, uintptr_t address) {
-    TracerVeTraceContext* trace = (TracerVeTraceContext*)ctx;
-
-    int threadId = (int)GetCurrentThreadId();
-
-    TracerActiveTrace* activeTrace = trace->mActiveTraces;
-    while (activeTrace) {
-        if (address >= activeTrace->mBaseOfCode &&
-            address < activeTrace->mBaseOfCode + activeTrace->mSizeOfCode &&
-            (activeTrace->mThreadId == -1 || activeTrace->mThreadId == threadId))
-        {
-            return eTracerFalse;
-        }
-        activeTrace = activeTrace->mNextLink;
-    }
-
-    return eTracerTrue;
-}
-
 static TracerBool tracerVeShouldSuspendCurrentTrace(TracerContext* ctx, uintptr_t address) {
     TracerVeTraceContext* trace = (TracerVeTraceContext*)ctx;
+    TracerActiveTrace* currentTrace = trace->mCurrentTrace;
 
-    if (tracerVeTraceIsAddressInExcludedModule(ctx, address)) {
+    if (!currentTrace) {
         return eTracerTrue;
     }
 
-    if (trace->mMaxCallDepth > 0) {
+    TracerBool isAddressWithinModule = 
+        (address >= currentTrace->mBaseOfCode &&
+         address < currentTrace->mBaseOfCode + currentTrace->mSizeOfCode);
+
+    if (!isAddressWithinModule) {
+        return eTracerTrue;
+    }
+
+    if (currentTrace->mMaxTraceDepth > 0) {
         // We set a limit to the maximum depth of calls to trace
 
-        if (tracerCoreGetBranchCallDepth() >= trace->mMaxCallDepth) {
+        if (tracerCoreGetBranchCallDepth() >= currentTrace->mMaxTraceDepth) {
             return eTracerTrue;
         }
     }
@@ -289,7 +324,7 @@ static TracerBool tracerVeShouldSuspendCurrentTrace(TracerContext* ctx, uintptr_
     return eTracerFalse;
 }
 
-static TracerBool tracerVeTraceIsTraceStartAddress(TracerContext* ctx, uintptr_t address) {
+static TracerActiveTrace* tracerVeGetTraceForAddress(TracerContext* ctx, uintptr_t address) {
     TracerVeTraceContext* trace = (TracerVeTraceContext*)ctx;
 
     int threadId = (int)GetCurrentThreadId();
@@ -299,15 +334,19 @@ static TracerBool tracerVeTraceIsTraceStartAddress(TracerContext* ctx, uintptr_t
         if (address == (uintptr_t)activeTrace->mStartAddress &&
             (activeTrace->mThreadId == -1 || activeTrace->mThreadId == threadId)) {
 
-            return eTracerTrue;
+            return activeTrace;
         }
         activeTrace = activeTrace->mNextLink;
     }
-    return eTracerFalse;
+    return NULL;
 }
 
 static TracerBool tracerVeTraceInstruction(TracerContext* ctx, PEXCEPTION_POINTERS ex, void** resumeAddress) {
     TracerVeTraceContext* trace = (TracerVeTraceContext*)ctx;
+
+    if (!trace->mCurrentTrace) {
+        return eTracerFalse;
+    }
 
     uintptr_t lastBranchAddress = ex->ExceptionRecord->ExceptionInformation[0];
 
@@ -333,25 +372,43 @@ static TracerBool tracerVeTraceInstruction(TracerContext* ctx, PEXCEPTION_POINTE
     TracerTracedInstruction inst;
     inst.mTraceId = tracerCoreGetCurrentTraceId();
     inst.mThreadId = (int)GetCurrentThreadId();
-    inst.mAddress = lastBranchAddress;
+
+    inst.mBranchSource = (uintptr_t)ex->ExceptionRecord->ExceptionInformation[0];
+    inst.mBranchTarget = (uintptr_t)ex->ExceptionRecord->ExceptionAddress;
+
+    inst.mRegisterSet.mEAX = ex->ContextRecord->Eax;
+    inst.mRegisterSet.mEBX = ex->ContextRecord->Ebx;
+    inst.mRegisterSet.mECX = ex->ContextRecord->Ecx;
+    inst.mRegisterSet.mEDX = ex->ContextRecord->Edx;
+    inst.mRegisterSet.mESI = ex->ContextRecord->Esi;
+    inst.mRegisterSet.mEDI = ex->ContextRecord->Edi;
+    inst.mRegisterSet.mEBP = ex->ContextRecord->Ebp;
+    inst.mRegisterSet.mESP = ex->ContextRecord->Esp;
+
+    inst.mRegisterSet.mSegGS = ex->ContextRecord->SegGs;
+    inst.mRegisterSet.mSegFS = ex->ContextRecord->SegFs;
+    inst.mRegisterSet.mSegES = ex->ContextRecord->SegEs;
+    inst.mRegisterSet.mSegDS = ex->ContextRecord->SegDs;
+    inst.mRegisterSet.mSegCS = ex->ContextRecord->SegCs;
+    inst.mRegisterSet.mSegSS = ex->ContextRecord->SegSs;
 
     switch (decodedInst.meta.category) {
     case ZYDIS_CATEGORY_CALL:
-        inst.mType = eTracerNodeTypeCall;
+        inst.mType = eTracerInstructionTypeCall;
         inst.mCallDepth = tracerCoreOnBranchEntered();
         continueTrace = (inst.mCallDepth >= 0);
 
         *resumeAddress = *(void**)ex->ContextRecord->Esp;
         break;
     case ZYDIS_CATEGORY_RET:
-        inst.mType = eTracerNodeTypeReturn;
+        inst.mType = eTracerInstructionTypeReturn;
         inst.mCallDepth = tracerCoreOnBranchReturned();
         continueTrace = (inst.mCallDepth > 0);
 
         *resumeAddress = (void*)ex->ContextRecord->Eip;
         break;
     default:
-        inst.mType = eTracerNodeTypeBranch;
+        inst.mType = eTracerInstructionTypeBranch;
         inst.mCallDepth = tracerCoreGetBranchCallDepth();
         continueTrace = (inst.mCallDepth >= 0);
 
@@ -376,6 +433,8 @@ static TracerBool tracerVeTraceInstruction(TracerContext* ctx, PEXCEPTION_POINTE
 
 static LONG CALLBACK tracerVeTraceHandler(PEXCEPTION_POINTERS ex) {
     TracerLocalProcessContext* process = (TracerLocalProcessContext*)tracerGetLocalProcessContext();
+
+    TracerVeTraceContext* trace = (TracerVeTraceContext*)process->mTraceContext;
 
     uintptr_t exceptionAddr = (uintptr_t)ex->ExceptionRecord->ExceptionAddress;
 
@@ -408,15 +467,33 @@ static LONG CALLBACK tracerVeTraceHandler(PEXCEPTION_POINTERS ex) {
                 return EXCEPTION_CONTINUE_SEARCH;
             }
 
-            // Check if we have a trace on this address
-            if (!tracerVeTraceIsTraceStartAddress(process->mTraceContext, exceptionAddr)) {
+            EnterCriticalSection(&trace->mTraceCritSect);
+
+            // Get the trace for this address
+            TracerActiveTrace* activeTrace = tracerVeGetTraceForAddress(
+                process->mTraceContext, exceptionAddr);
+
+            if (!activeTrace) {
+                LeaveCriticalSection(&trace->mTraceCritSect);
+
                 // The interrupt was not triggered by our tracer
                 return EXCEPTION_CONTINUE_SEARCH;
             }
 
+            if (trace->mCurrentTrace) {
+                // Some other thread is currently running a trace, ignore this
+                LeaveCriticalSection(&trace->mTraceCritSect);
+
+                // Temporarily remove the enabled bit for this breakpoint
+                tracerHwBreakpointSetBits(&ex->ContextRecord->Dr7, index << 1, 1, 0);
+                return EXCEPTION_CONTINUE_EXECUTION;
+            }
+
+            trace->mCurrentTrace = activeTrace;
+            LeaveCriticalSection(&trace->mTraceCritSect);
+
             // Temporarily remove the enabled bit for this breakpoint
-            // We will restore it on the next call to the handler. The breakpoint index
-            // will be stored in thread local storage for the time being.
+            // We will set this bit again on the next call to this handler (else part of this branch)
             tracerHwBreakpointSetBits(&ex->ContextRecord->Dr7, index << 1, 1, 0);
 
             // This will back up the breakpoint index into the thread local storage and reset the call depth
@@ -470,6 +547,22 @@ static LONG CALLBACK tracerVeTraceHandler(PEXCEPTION_POINTERS ex) {
             }
 
         } else {
+
+            // Each trace has a lifetime field. If the lifetime field is set and reaches 0, the trace
+            // for this function should be removed.
+
+            EnterCriticalSection(&trace->mTraceCritSect);
+
+            TracerActiveTrace* currentTrace = trace->mCurrentTrace;
+
+            if (currentTrace && currentTrace->mLifetime > 0 && --currentTrace->mLifetime == 0) {
+                tracerVeRemoveCurrentTrace(process->mTraceContext, ex->ContextRecord);
+            }
+
+            // The current trace has ended
+            trace->mCurrentTrace = NULL;
+
+            LeaveCriticalSection(&trace->mTraceCritSect);
 
             // Disable branch tracing on this thread
             tracerVeTraceSetFlags(ex->ContextRecord, eTracerFalse);

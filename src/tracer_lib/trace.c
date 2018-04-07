@@ -30,13 +30,13 @@ void tracerCleanupTraceContext(TracerContext* ctx) {
     tracerCoreCleanupContext(ctx);
 }
 
-TracerBool tracerTraceStart(TracerContext* ctx, void* address, int threadId) {
+TracerBool tracerTraceStart(TracerContext* ctx, void* address, int threadId, int maxTraceDepth, int lifetime) {
     if (!tracerCoreValidateContext(ctx, eTracerTraceContext)) {
         return eTracerFalse;
     }
     TracerTraceContext* trace = (TracerTraceContext*)ctx;
     TLIB_METHOD_CHECK_SUPPORT(trace->mStartTrace, eTracerFalse);
-    return trace->mStartTrace(ctx, address, threadId);
+    return trace->mStartTrace(ctx, address, threadId, maxTraceDepth, lifetime);
 }
 
 TracerBool tracerTraceStop(TracerContext* ctx, void* address, int threadId) {

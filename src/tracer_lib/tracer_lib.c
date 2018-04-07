@@ -215,11 +215,13 @@ TLIB_API TracerContext* TLIB_CALL tracerGetContextForPid(int pid) {
     return ctx;
 }
 
-TLIB_API TracerBool TLIB_CALL tracerStartTrace(void* functionAddress, int threadId) {
+TLIB_API TracerBool TLIB_CALL tracerStartTrace(void* functionAddress, int threadId, int maxTraceDepth, int lifetime) {
     TracerStartTrace startTrace = {
         /* mSizeOfStruct        = */ sizeof(TracerStartTrace),
-        /* mThreadId            = */ threadId,
         /* mAddress             = */ functionAddress,
+        /* mThreadId            = */ threadId,
+        /* mTraceDepth          = */ maxTraceDepth,
+        /* mLifetime            = */ lifetime,
     };
     return tracerStartTraceEx(&startTrace);
 }
@@ -250,8 +252,8 @@ TLIB_API TracerBool TLIB_CALL tracerStartTraceEx(TracerStartTrace* startTrace) {
 TLIB_API TracerBool TLIB_CALL tracerStopTrace(void* functionAddress, int threadId) {
     TracerStopTrace stopTrace = {
         /* mSizeOfStruct        = */ sizeof(TracerStopTrace),
-        /* mThreadId            = */ threadId,
         /* mAddress             = */ functionAddress,
+        /* mThreadId            = */ threadId,
     };
     return tracerStopTraceEx(&stopTrace);
 }

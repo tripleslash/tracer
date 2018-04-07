@@ -12,6 +12,8 @@ typedef struct TracerActiveTrace {
     uintptr_t                   mBaseOfCode;
     uintptr_t                   mSizeOfCode;
     int                         mThreadId;
+    int                         mMaxTraceDepth;
+    int                         mLifetime;
     TracerHandle                mBreakpoint;
     struct TracerActiveTrace*   mNextLink;
 } TracerActiveTrace;
@@ -23,7 +25,8 @@ typedef struct TracerVeTraceContext {
     ZydisDecoder                mDecoder;
     ZydisFormatter              mFormatter;
     TracerActiveTrace*          mActiveTraces;
-    int                         mMaxCallDepth;
+    TracerActiveTrace* volatile mCurrentTrace;
+    CRITICAL_SECTION            mTraceCritSect;
 } TracerVeTraceContext;
 
 TracerContext* tracerCreateVeTraceContext(int type, int size, TracerHandle traceQueue);

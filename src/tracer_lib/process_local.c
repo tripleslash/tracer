@@ -115,7 +115,12 @@ static TracerBool tracerProcessLocalShutdown(TracerContext* ctx) {
 
 static TracerBool tracerProcessLocalStartTrace(TracerContext* ctx, const TracerStartTrace* startTrace) {
     TracerLocalProcessContext* process = (TracerLocalProcessContext*)ctx;
-    return tracerTraceStart(process->mTraceContext, startTrace->mAddress, startTrace->mThreadId);
+
+    return tracerTraceStart(process->mTraceContext,
+        startTrace->mAddress,
+        startTrace->mThreadId,
+        startTrace->mMaxTraceDepth,
+        startTrace->mLifetime);
 }
 
 static TracerBool tracerProcessLocalStopTrace(TracerContext* ctx, const TracerStopTrace* stopTrace) {
