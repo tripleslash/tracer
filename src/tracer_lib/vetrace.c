@@ -481,11 +481,9 @@ static LONG CALLBACK tracerVeTraceHandler(PEXCEPTION_POINTERS ex) {
             }
 
             if (trace->mCurrentTrace) {
-                // Some other thread is currently running a trace, ignore this
                 LeaveCriticalSection(&trace->mTraceCritSect);
 
-                // Temporarily remove the enabled bit for this breakpoint
-                tracerHwBreakpointSetBits(&ex->ContextRecord->Dr7, index << 1, 1, 0);
+                // Some other thread is currently running a trace, ignore this
                 return EXCEPTION_CONTINUE_EXECUTION;
             }
 
