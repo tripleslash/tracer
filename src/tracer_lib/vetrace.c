@@ -335,7 +335,7 @@ static TracerActiveTrace* tracerVeGetTraceForAddress(TracerContext* ctx, uintptr
     return NULL;
 }
 
-static TracerBool tracerVeTraceInstruction(TracerContext* ctx, PEXCEPTION_POINTERS ex, void** resumeAddress) {
+static TracerBool tracerVeTraceInstruction(TracerContext* ctx, PEXCEPTION_POINTERS ex, TracerBool triggeredByBreakpoint, void** resumeAddress) {
     TracerVeTraceContext* trace = (TracerVeTraceContext*)ctx;
 
     if (!trace->mCurrentTrace) {
@@ -344,7 +344,7 @@ static TracerBool tracerVeTraceInstruction(TracerContext* ctx, PEXCEPTION_POINTE
 
     uintptr_t lastBranchAddress = ex->ExceptionRecord->ExceptionInformation[0];
 
-    if (!lastBranchAddress) {
+    if (triggeredByBreakpoint || !lastBranchAddress) {
         *resumeAddress = ex->ExceptionRecord->ExceptionAddress;
         return eTracerTrue;
     }
@@ -428,6 +428,8 @@ static LONG CALLBACK tracerVeTraceHandler(PEXCEPTION_POINTERS ex) {
     switch (ex->ExceptionRecord->ExceptionCode) {
     case EXCEPTION_SINGLE_STEP:
     {
+        TracerBool triggeredByBreakpoint = eTracerFalse;
+
         // Check if there is already an ongoing trace
         int index = tracerCoreGetActiveHwBreakpointIndex();
 
@@ -484,6 +486,8 @@ static LONG CALLBACK tracerVeTraceHandler(PEXCEPTION_POINTERS ex) {
             // This will back up the breakpoint index into the thread local storage and reset the call depth
             tracerCoreOnBeginNewTrace(index);
 
+            triggeredByBreakpoint = eTracerTrue;
+
         } else {
 
             // Restore the bit that we removed during the first call to the handler
@@ -501,13 +505,15 @@ static LONG CALLBACK tracerVeTraceHandler(PEXCEPTION_POINTERS ex) {
 
             // We just resumed from a suspended call, the call depth is therefore 1 call too high
             tracerCoreOnBranchReturned();
+
+            triggeredByBreakpoint = eTracerTrue;
         }
 
         void* resumeAddr = NULL;
 
         // If this function returns false it means that the tracing for the current
         // thread should be disabled. In this case we remove the branch trace flags.
-        if (tracerVeTraceInstruction(process->mTraceContext, ex, &resumeAddr)) {
+        if (tracerVeTraceInstruction(process->mTraceContext, ex, triggeredByBreakpoint, &resumeAddr)) {
 
             if (tracerVeShouldSuspendCurrentTrace(process->mTraceContext, exceptionAddr)) {
                 // We are not interested in tracing calls inside windows libraries.
