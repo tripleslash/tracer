@@ -9,8 +9,6 @@
 
 #include <TlHelp32.h>
 
-#pragma comment(lib, "Zydis/Zydis.lib")
-
 #define TLIB_VETRACE_DR7_LBR                 0x100       // Last Branch Record (Bit 8 in DR7)
                                                          // Mapped to Model Specific Register in Kernel (MSR).
 
@@ -69,13 +67,6 @@ void tracerCleanupVeTraceContext(TracerContext* ctx) {
 static TracerBool tracerVeTraceInit(TracerContext* ctx) {
     TracerVeTraceContext* trace = (TracerVeTraceContext*)ctx;
     InitializeCriticalSection(&trace->mTraceCritSect);
-
-    if (ZydisDecoderInit(&trace->mDecoder, ZYDIS_MACHINE_MODE_LONG_COMPAT_32, ZYDIS_ADDRESS_WIDTH_32) != ZYDIS_STATUS_SUCCESS) {
-        return eTracerFalse;
-    }
-    if (ZydisFormatterInit(&trace->mFormatter, ZYDIS_FORMATTER_STYLE_INTEL) != ZYDIS_STATUS_SUCCESS) {
-        return eTracerFalse;
-    }
 
     // Register the VEH. To avoid unwanted calls, make sure it is the last handler in the chain.
     trace->mAddVehHandle = AddVectoredExceptionHandler(TRUE, tracerVeTraceHandler);
@@ -358,10 +349,12 @@ static TracerBool tracerVeTraceInstruction(TracerContext* ctx, PEXCEPTION_POINTE
         return eTracerTrue;
     }
 
+    TracerProcessContext* process = (TracerProcessContext*)tracerGetLocalProcessContext();
+
     ZydisDecodedInstruction decodedInst;
 
     if (ZydisDecoderDecodeBuffer(
-            &trace->mDecoder,
+            &process->mDecoder,
             (void*)lastBranchAddress,
             ZYDIS_MAX_INSTRUCTION_LENGTH,
             lastBranchAddress,
@@ -416,15 +409,6 @@ static TracerBool tracerVeTraceInstruction(TracerContext* ctx, PEXCEPTION_POINTE
         continueTrace = (inst.mCallDepth >= 0);
 
         *resumeAddress = (void*)ex->ContextRecord->Eip;
-    }
-
-    if (ZydisFormatterFormatInstruction(
-            &trace->mFormatter,
-            &decodedInst,
-            inst.mDecodedInst,
-            sizeof(inst.mDecodedInst)) != ZYDIS_STATUS_SUCCESS) {
-
-        return eTracerFalse;
     }
 
     while (!tracerRWQueuePushItem(trace->mSharedRWQueue, &inst)) {

@@ -263,6 +263,7 @@
     <ClCompile Include="..\..\src\tracer_lib\process.c" />
     <ClCompile Include="..\..\src\tracer_lib\process_local.c" />
     <ClCompile Include="..\..\src\tracer_lib\process_remote.c" />
+    <ClCompile Include="..\..\src\tracer_lib\symbol_resolver.c" />
     <ClCompile Include="..\..\src\tracer_lib\trace.c" />
     <ClCompile Include="..\..\src\tracer_lib\tracer_lib.c" />
     <ClCompile Include="..\..\src\tracer_lib\vetrace.c" />
@@ -277,6 +278,7 @@
     <ClInclude Include="..\..\include\tracer_lib\process.h" />
     <ClInclude Include="..\..\include\tracer_lib\process_local.h" />
     <ClInclude Include="..\..\include\tracer_lib\process_remote.h" />
+    <ClInclude Include="..\..\include\tracer_lib\symbol_resolver.h" />
     <ClInclude Include="..\..\include\tracer_lib\trace.h" />
     <ClInclude Include="..\..\include\tracer_lib\tracer_lib.h" />
     <ClInclude Include="..\..\include\tracer_lib\vetrace.h" />

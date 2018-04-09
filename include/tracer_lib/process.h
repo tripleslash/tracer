@@ -4,6 +4,10 @@
 #include <tracer_lib/core.h>
 #include <tracer_lib/trace.h>
 
+#define ZYDIS_STATIC_DEFINE
+
+#include <Zydis/Zydis.h>
+
 #define TLIB_IN_MEGABYTES                   1024*1024
 #define TLIB_SHARED_MEMORY_SIZE             16*TLIB_IN_MEGABYTES
 
@@ -14,6 +18,9 @@ typedef struct TracerProcessContext {
     TracerHandle                mSharedMemoryHandle;
     TracerHandle                mSharedRWQueue;
     void*                       mMappedView;
+
+    ZydisDecoder                mDecoder;
+    ZydisFormatter              mFormatter;
 
     TracerBool(*mStartTrace)(TracerContext* ctx, const TracerStartTrace* startTrace);
 
@@ -33,5 +40,7 @@ TracerBool tracerProcessStartTrace(TracerContext* ctx, const TracerStartTrace* s
 TracerBool tracerProcessStopTrace(TracerContext* ctx, const TracerStopTrace* stopTrace);
 
 size_t tracerProcessFetchTraces(TracerContext* ctx, TracerTracedInstruction* outTraces, size_t maxElements);
+
+TracerBool tracerProcessFormatInstruction(TracerContext* ctx, uintptr_t address, char* outBuffer, size_t bufferLength);
 
 #endif

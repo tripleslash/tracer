@@ -302,3 +302,20 @@ TLIB_API size_t TLIB_CALL tracerFetchTraces(TracerTracedInstruction* outTraces, 
     tracerCoreReleaseProcessContextLock();
     return result;
 }
+
+TLIB_API TracerBool TLIB_CALL tracerFormatInstruction(uintptr_t address, char* outBuffer, size_t bufferLength) {
+    tracerCoreSetLastError(eTracerErrorSuccess);
+
+    TracerBool result = eTracerFalse;
+    tracerCoreAcquireProcessContextLock();
+
+    TracerContext* ctx = tracerCoreGetProcessContext();
+    if (ctx) {
+        result = tracerProcessFormatInstruction(ctx, address, outBuffer, bufferLength);
+    } else {
+        tracerCoreSetLastError(eTracerErrorNotImplemented);
+    }
+
+    tracerCoreReleaseProcessContextLock();
+    return result;
+}

@@ -19,7 +19,8 @@
     #define TLIB_API                    TLIB_DECL(dllexport)
 #else
     #define TLIB_API                    TLIB_DECL(dllimport)
-    #pragma comment(lib, "tracer_lib")
+
+    #pragma comment                     (lib, "tracer_lib")
 #endif
 
 #ifdef __cplusplus
@@ -146,8 +147,6 @@ typedef enum TracerTracedInstructionType {
     eTracerInstructionTypeReturn        = 2,
 } TracerTracedInstructionType;
 
-#define TLIB_MAX_DECODED_INST_LENGTH    32
-
 /**
  * TODO: comment
  */
@@ -182,7 +181,6 @@ typedef struct TracerTracedInstruction {
     uintptr_t                           mBranchSource;
     uintptr_t                           mBranchTarget;
     TracerRegisterSet                   mRegisterSet;
-    char                                mDecodedInst[TLIB_MAX_DECODED_INST_LENGTH];
 } TracerTracedInstruction;
 
 /**
@@ -370,6 +368,8 @@ TLIB_API TracerBool TLIB_CALL tracerStopTrace(void* functionAddress, int threadI
 TLIB_API TracerBool TLIB_CALL tracerStopTraceEx(TracerStopTrace* stopTrace);
 
 TLIB_API size_t TLIB_CALL tracerFetchTraces(TracerTracedInstruction* outTraces, size_t maxElements);
+
+TLIB_API TracerBool TLIB_CALL tracerFormatInstruction(uintptr_t address, char* outBuffer, size_t bufferLength);
 
 #ifdef __cplusplus
 }
