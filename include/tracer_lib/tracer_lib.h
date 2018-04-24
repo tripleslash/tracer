@@ -119,7 +119,10 @@ typedef struct TracerAttachProcess {
 } TracerAttachProcess;
 
 /**
- * TODO: comment
+ * @brief   The structure that should be passed to \ref tracerStartTraceEx.
+ * @remarks Don't forget to set \ref mSizeOfStruct.
+ * @see     tracerStartTrace
+ * @see     tracerStartTraceEx
  */
 typedef struct TracerStartTrace {
     int                                 mSizeOfStruct;              ///< The size of the structure (in bytes).
@@ -130,7 +133,10 @@ typedef struct TracerStartTrace {
 } TracerStartTrace;
 
 /**
- * TODO: comment
+ * @brief   The structure that should be passed to \ref tracerStopTraceEx.
+ * @remarks Don't forget to set \ref mSizeOfStruct.
+ * @see     tracerStopTrace
+ * @see     tracerStopTraceEx
  */
 typedef struct TracerStopTrace {
     int                                 mSizeOfStruct;              ///< The size of the structure (in bytes).
@@ -139,16 +145,18 @@ typedef struct TracerStopTrace {
 } TracerStopTrace;
 
 /**
- * TODO: comment
+ * @brief   Values that represent the type of a traced instruction.
+ * @see     tracerFetchTraces
  */
 typedef enum TracerTracedInstructionType {
-    eTracerInstructionTypeBranch        = 0,
-    eTracerInstructionTypeCall          = 1,
-    eTracerInstructionTypeReturn        = 2,
+    eTracerInstructionTypeBranch        = 0,                        ///< The instruction is a conditional or unconditional branch.
+    eTracerInstructionTypeCall          = 1,                        ///< The instruction is a function call.
+    eTracerInstructionTypeReturn        = 2,                        ///< The instruction is a return from a function
 } TracerTracedInstructionType;
 
 /**
- * TODO: comment
+ * @brief   A structure that stores the register set at the point of execution of a traced instruction.
+ * @see     tracerFetchTraces
  */
 struct TracerRegisterSetX86 {
     uint32_t                            mEAX;
@@ -171,7 +179,8 @@ struct TracerRegisterSetX86 {
 typedef struct TracerRegisterSetX86     TracerRegisterSet;
 
 /**
- * TODO: comment
+ * @brief   A structure that stores the information for a single instruction trace.
+ * @see     tracerFetchTraces
  */
 typedef struct TracerTracedInstruction {
     TracerTracedInstructionType         mType;
@@ -353,22 +362,63 @@ TLIB_API TracerContext* TLIB_CALL tracerGetProcessContext(void);
  */
 TLIB_API TracerContext* TLIB_CALL tracerGetContextForPid(int pid);
 
-
-// Begin tracing a new function
-// Sets a hardware breakpoint on the function address
-// When the breakpoint triggers, the thread that triggered it will enable tracing
-// When the function returns, the trace flags are removed
+/**
+ * @brief   Begins a trace on the specified function address.
+ * @param   functionAddress The address of the first instruction of a function to trace.
+ * @param   threadId        The thread id of the thread that should be traced.
+ *                          When set to -1, all threads that execute the function will be traced.
+ * @param   maxTraceDepth   The maximum call depth of the trace. Tracing is more efficient the lower this value is set.
+ * @param   lifetime        The number of times that a trace for this function should be recorded.
+ *                          If set to -1, the function will be traced until the trace is stopped manually with a call to \ref tracerStopTrace.
+ * @retval  eTracerTrue     The function succeeded.
+ * @retval  eTracerFalse    The function failed.
+ */
 TLIB_API TracerBool TLIB_CALL tracerStartTrace(void* functionAddress, int threadId TLIB_ARG(-1), int maxTraceDepth TLIB_ARG(-1), int lifetime TLIB_ARG(-1));
 
+/**
+ * @brief   Begins a trace on the specified function address.
+ * @param   startTrace      See \ref tracerStartTrace.
+ * @retval  eTracerTrue     The function succeeded.
+ * @retval  eTracerFalse    The function failed.
+ */
 TLIB_API TracerBool TLIB_CALL tracerStartTraceEx(TracerStartTrace* startTrace);
 
-// Remove the hardware breakpoint from the function and unset the threads trace flags
+/**
+ * @brief   Ends the trace on the specified function address.
+ * @param   functionAddress The address of the first instruction of an active function trace.
+ * @param   threadId        The thread id of the thread for which the trace should be stopped.
+ *                          When set to -1, all active traces on this function will be stopped.
+ * @retval  eTracerTrue     The function succeeded.
+ * @retval  eTracerFalse    The function failed.
+ */
 TLIB_API TracerBool TLIB_CALL tracerStopTrace(void* functionAddress, int threadId TLIB_ARG(-1));
 
+/**
+ * @brief   Ends the trace on the specified function address.
+ * @param   stopTrace       See \ref tracerStopTrace.
+ * @retval  eTracerTrue     The function succeeded.
+ * @retval  eTracerFalse    The function failed.
+ */
 TLIB_API TracerBool TLIB_CALL tracerStopTraceEx(TracerStopTrace* stopTrace);
 
+/**
+ * @brief   Fetch the current trace results from the active process context.
+ * @param   outTraces       An array of at least maxElements length, which will receive all
+ *                          outstanding recorded traces for the active process.
+ * @param   maxElements     The length of the outTraces array.
+ * @return  The number of trace results that were returned in outTraces.
+ */
 TLIB_API size_t TLIB_CALL tracerFetchTraces(TracerTracedInstruction* outTraces, size_t maxElements);
 
+/**
+ * @brief   Decodes and formats the instruction at the specified address within the memory space
+ *          of the active process context.
+ *
+ * @param   outBuffer       An array of at least bufferLength characters that will receive the decoded instruction string.
+ * @param   bufferLength    The length of the outBuffer array.
+ * @retval  eTracerTrue     The function succeeded.
+ * @retval  eTracerFalse    The function failed.
+ */
 TLIB_API TracerBool TLIB_CALL tracerFormatInstruction(uintptr_t address, char* outBuffer, size_t bufferLength);
 
 #ifdef __cplusplus
