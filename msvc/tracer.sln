@@ -3,17 +3,17 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.27130.2036
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "tracer_lib", "tracer_lib\tracer_lib.vcxproj", "{87AA7F7B-2804-4F03-A6B4-8BA04335A032}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "tracer_gui", "tracer_gui\tracer_gui.csproj", "{BADE10E6-EA16-4FD4-B9D7-AEB78CC2E87C}"
+	ProjectSection(ProjectDependencies) = postProject
+		{60B240D4-2254-4AD7-B71C-34A2F03A5014} = {60B240D4-2254-4AD7-B71C-34A2F03A5014}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "tracer_console", "tracer_console\tracer_console.vcxproj", "{B9B16A4B-6B6A-4841-8948-289B0E385A98}"
 	ProjectSection(ProjectDependencies) = postProject
 		{87AA7F7B-2804-4F03-A6B4-8BA04335A032} = {87AA7F7B-2804-4F03-A6B4-8BA04335A032}
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "tracer_gui", "tracer_gui\tracer_gui.csproj", "{BADE10E6-EA16-4FD4-B9D7-AEB78CC2E87C}"
-	ProjectSection(ProjectDependencies) = postProject
-		{60B240D4-2254-4AD7-B71C-34A2F03A5014} = {60B240D4-2254-4AD7-B71C-34A2F03A5014}
-	EndProjectSection
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "tracer_lib", "tracer_lib\tracer_lib.vcxproj", "{87AA7F7B-2804-4F03-A6B4-8BA04335A032}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "tracer_wrapper", "tracer_wrapper\tracer_wrapper.vcxproj", "{60B240D4-2254-4AD7-B71C-34A2F03A5014}"
 	ProjectSection(ProjectDependencies) = postProject
@@ -22,8 +22,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "tracer_wrapper", "tracer_wr
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
-		Debug|x86 = Debug|x86
 		Release|x86 = Release|x86
+		Debug|x86 = Debug|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{87AA7F7B-2804-4F03-A6B4-8BA04335A032}.Debug|x86.ActiveCfg = Debug|Win32
