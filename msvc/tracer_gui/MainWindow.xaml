@@ -5,18 +5,11 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:tracer_gui"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
+        Title="MainWindow" Height="450" Width="800" Loaded="Window_Loaded">
     <Grid>
-        <TreeView HorizontalAlignment="Left" Height="364" Margin="10,45,0,0" VerticalAlignment="Top" Width="772">
-            <TreeViewItem Header="First item">
-                <TreeViewItem Header="First sub item"/>
-                <TreeViewItem Header="Second sub item"/>
-            </TreeViewItem>
-            <TreeViewItem Header="Second item"/>
-        </TreeView>
-        <ComboBox HorizontalAlignment="Left" Margin="10,10,0,0" VerticalAlignment="Top" Width="120" SelectionChanged="ComboBox_SelectionChanged"/>
-        <TextBox HorizontalAlignment="Left" Height="23" Margin="148,10,0,0" TextWrapping="Wrap" Text="TextBox" VerticalAlignment="Top" Width="120"/>
-        <Button Content="Button" HorizontalAlignment="Left" Margin="289,13,0,0" VerticalAlignment="Top" Width="75" Click="Button_Click"/>
-
+        <TreeView HorizontalAlignment="Left" Height="364" Margin="10,45,0,0" VerticalAlignment="Top" Width="772" Name="TraceOutputTreeView" />
+        <ComboBox HorizontalAlignment="Left" Margin="10,10,0,0" VerticalAlignment="Top" Width="424" Name="ProcessSelectionComboBox" SelectionChanged="ProcessSelectionComboBox_SelectionChanged" DropDownOpened="ProcessSelectionComboBox_DropDownOpened"/>
+        <TextBox HorizontalAlignment="Left" Height="23" Margin="571,10,0,0" TextWrapping="Wrap" Text="Function" VerticalAlignment="Top" Width="120" Name="TraceAddressTextBox" IsEnabled="False"/>
+        <Button Content="Start Trace" HorizontalAlignment="Left" Margin="707,13,0,0" VerticalAlignment="Top" Width="75" Name="StartStopTraceButton" Click="StartStopTraceButton_Click" IsEnabled="False"/>
     </Grid>
 </Window>
