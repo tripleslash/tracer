@@ -33,7 +33,7 @@ namespace tracer_gui
             {
                 ParentNode = parent;
                 TracedInstruction = inst;
-                Header = $"{TracerApi.FormatInstruction(inst.BranchSource)}";
+                Header = $"{TracerApi.DecodeAndFormatInstruction(inst.BranchSource)}";
             }
         }
 

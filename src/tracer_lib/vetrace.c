@@ -349,7 +349,7 @@ static TracerBool tracerVeTraceInstruction(TracerContext* ctx, PEXCEPTION_POINTE
         return eTracerTrue;
     }
 
-    TracerProcessContext* process = (TracerProcessContext*)tracerGetLocalProcessContext();
+    TracerLocalProcessContext* process = (TracerLocalProcessContext*)tracerGetLocalProcessContext();
 
     ZydisDecodedInstruction decodedInst;
 

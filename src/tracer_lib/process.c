@@ -1,12 +1,8 @@
 
 #include <tracer_lib/process.h>
 #include <tracer_lib/rwqueue.h>
-#include <tracer_lib/memory.h>
-#include <tracer_lib/symbol_resolver.h>
 
 #include <assert.h>
-
-#pragma comment(lib, "Zydis/Zydis.lib")
 
 TracerContext* tracerCreateProcessContext(int type, int size, int pid) {
     assert(size >= sizeof(TracerProcessContext));
@@ -22,16 +18,6 @@ TracerContext* tracerCreateProcessContext(int type, int size, int pid) {
     TracerProcessContext* process = (TracerProcessContext*)ctx;
     process->mProcessId = pid;
 
-    if (ZydisDecoderInit(&process->mDecoder, ZYDIS_MACHINE_MODE_LONG_COMPAT_32, ZYDIS_ADDRESS_WIDTH_32) != ZYDIS_STATUS_SUCCESS) {
-        tracerCoreDestroyContext(ctx);
-        return NULL;
-    }
-    if (ZydisFormatterInit(&process->mFormatter, ZYDIS_FORMATTER_STYLE_INTEL) != ZYDIS_STATUS_SUCCESS) {
-        tracerCoreDestroyContext(ctx);
-        return NULL;
-    }
-
-    tracerRegisterCustomSymbolResolver(&process->mFormatter);
     return ctx;
 }
 
@@ -107,41 +93,11 @@ size_t tracerProcessFetchTraces(TracerContext* ctx, TracerTracedInstruction* out
     return tracerRWQueuePopAll(process->mSharedRWQueue, outTraces, maxElements);
 }
 
-TracerBool tracerProcessFormatInstruction(TracerContext* ctx, uintptr_t address, char* outBuffer, size_t bufferLength) {
+const char* tracerProcessDecodeAndFormatInstruction(TracerContext* ctx, TracerDecodeAndFormat* decodeAndFmt) {
     if (!tracerCoreValidateContext(ctx, eTracerProcessContext)) {
-        return eTracerFalse;
+        return NULL;
     }
-
     TracerProcessContext* process = (TracerProcessContext*)ctx;
-
-    uint8_t instBuffer[ZYDIS_MAX_INSTRUCTION_LENGTH];
-
-    if (tracerMemoryRead(process->mMemoryContext,
-            (const void*)address,
-            instBuffer,
-            sizeof(instBuffer)) != sizeof(instBuffer)) {
-
-        return eTracerFalse;
-    }
-
-    ZydisDecodedInstruction decodedInst;
-
-    if (ZydisDecoderDecodeBuffer(&process->mDecoder,
-            instBuffer,
-            sizeof(instBuffer),
-            address,
-            &decodedInst) != ZYDIS_STATUS_SUCCESS) {
-
-        return eTracerFalse;
-    }
-
-    if (ZydisFormatterFormatInstruction(&process->mFormatter,
-            &decodedInst,
-            outBuffer,
-            bufferLength) != ZYDIS_STATUS_SUCCESS) {
-
-        return eTracerFalse;
-    }
-
-    return eTracerTrue;
+    TLIB_METHOD_CHECK_SUPPORT(process->mDecodeAndFormat, NULL);
+    return process->mDecodeAndFormat(ctx, decodeAndFmt);
 }

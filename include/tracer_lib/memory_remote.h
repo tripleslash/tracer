@@ -13,4 +13,6 @@ void tracerCleanupRemoteMemoryContext(TracerContext* ctx);
 
 int tracerMemoryRemoteCallLocalExport(TracerContext* ctx, const char* exportName, const TracerStruct* parameter);
 
+int tracerMemoryRemoteCallLocalExportEx(TracerContext* ctx, const char* exportName, TracerStruct* parameter);
+
 #endif

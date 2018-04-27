@@ -391,3 +391,25 @@ int tracerMemoryRemoteCallLocalExport(TracerContext* ctx, const char* exportName
     tracerMemoryRemoteFree(ctx, buffer);
     return result;
 }
+
+int tracerMemoryRemoteCallLocalExportEx(TracerContext* ctx, const char* exportName, TracerStruct* parameter) {
+    char decoratedExportName[MAX_EXPORT_NAME_LENGTH];
+    snprintf(decoratedExportName, MAX_EXPORT_NAME_LENGTH, "_%s@4", exportName);
+
+    void* buffer = tracerMemoryRemoteAlloc(ctx, parameter->mSizeOfStruct);
+
+    if (!buffer) {
+        return 0;
+    }
+
+    int result = 0;
+
+    if (tracerMemoryRemoteWrite(ctx, buffer, parameter, parameter->mSizeOfStruct)) {
+        result = (int)tracerMemoryRemoteCallNamedExportEx(ctx, NULL, decoratedExportName, buffer, -1);
+
+        tracerMemoryRemoteRead(ctx, buffer, parameter, parameter->mSizeOfStruct);
+    }
+
+    tracerMemoryRemoteFree(ctx, buffer);
+    return result;
+}

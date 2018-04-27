@@ -17,6 +17,8 @@ static TracerBool tracerProcessRemoteStartTrace(TracerContext* ctx, const Tracer
 
 static TracerBool tracerProcessRemoteStopTrace(TracerContext* ctx, const TracerStopTrace* stopTrace);
 
+static const char* tracerProcessRemoteDecodeAndFormatInstruction(TracerContext* ctx, TracerDecodeAndFormat* decodeAndFmt);
+
 TracerContext* tracerCreateRemoteProcessContext(int type, int size, int pid) {
     assert(size >= sizeof(TracerRemoteProcessContext));
     assert(pid >= 0);
@@ -42,6 +44,7 @@ TracerContext* tracerCreateRemoteProcessContext(int type, int size, int pid) {
     process->mSharedMemoryHandle = localMapping;
     process->mStartTrace = tracerProcessRemoteStartTrace;
     process->mStopTrace = tracerProcessRemoteStopTrace;
+    process->mDecodeAndFormat = tracerProcessRemoteDecodeAndFormatInstruction;
 
     process->mMemoryContext = tracerCreateRemoteMemoryContext(
         eTracerMemoryContextRemote,
@@ -156,4 +159,32 @@ static TracerBool tracerProcessRemoteStopTrace(TracerContext* ctx, const TracerS
 
     return (TracerBool)tracerMemoryRemoteCallLocalExport(
         process->mMemoryContext, "tracerStopTraceEx", (const TracerStruct*)stopTrace);
+}
+
+static const char* tracerProcessRemoteDecodeAndFormatInstruction(TracerContext* ctx, TracerDecodeAndFormat* decodeAndFmt) {
+    TracerProcessContext* process = (TracerProcessContext*)ctx;
+
+    TracerDecodeAndFormat remoteArgs = {
+        /* mSizeOfStruct        = */ sizeof(TracerDecodeAndFormat),
+        /* mAddress             = */ decodeAndFmt->mAddress,
+        /* mOutBuffer           = */ NULL,
+        /* mBufferLength        = */ 0,
+        /* mDummy               = */ { 0 },
+    };
+
+    if (!tracerMemoryRemoteCallLocalExportEx(process->mMemoryContext,
+            "tracerDecodeAndFormatInstructionEx", (TracerStruct*)&remoteArgs)) {
+
+        return NULL;
+    }
+
+    size_t length = min(decodeAndFmt->mBufferLength, sizeof(remoteArgs.mDummy));
+    if (length == 0) {
+        return NULL;
+    }
+
+    memcpy(decodeAndFmt->mOutBuffer, remoteArgs.mDummy, length);
+    decodeAndFmt->mOutBuffer[length - 1] = 0;
+
+    return decodeAndFmt->mOutBuffer;
 }

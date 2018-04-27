@@ -145,6 +145,20 @@ typedef struct TracerStopTrace {
 } TracerStopTrace;
 
 /**
+ * @brief   The structure that should be passed to \ref tracerDecodeAndFormatInstructionEx.
+ * @remarks Don't forget to set \ref mSizeOfStruct.
+ * @see     tracerDecodeAndFormatInstruction
+ * @see     tracerDecodeAndFormatInstructionEx
+ */
+typedef struct TracerDecodeAndFormat {
+    int                                 mSizeOfStruct;              ///< The size of the structure (in bytes).
+    uintptr_t                           mAddress;                   ///< The address of the instruction that should be decoded.
+    char*                               mOutBuffer;                 ///< Should be set to \c NULL.
+    size_t                              mBufferLength;              ///< Should be set to 0.
+    char                                mDummy[256];                ///< Should be set to 0.
+} TracerDecodeAndFormat;
+
+/**
  * @brief   Values that represent the type of a traced instruction.
  * @see     tracerFetchTraces
  */
@@ -357,7 +371,7 @@ TLIB_API TracerContext* TLIB_CALL tracerGetProcessContext(void);
 /**
  * @brief   Gets the process context for the given process id.
  * @param   pid             The process id for which the context should be retrieved.
- * @return  The process context for this process id or NULL if the process is not attached.
+ * @return  The process context for this process id or \c NULL if the process is not attached.
  * @see     tracerAttachProcess
  */
 TLIB_API TracerContext* TLIB_CALL tracerGetContextForPid(int pid);
@@ -405,7 +419,7 @@ TLIB_API TracerBool TLIB_CALL tracerStopTraceEx(TracerStopTrace* stopTrace);
  * @brief   Fetch the current trace results from the active process context.
  * @param   outTraces       An array of at least maxElements length, which will receive all
  *                          outstanding recorded traces for the active process.
- * @param   maxElements     The length of the outTraces array.
+ * @param   maxElements     The maximum number of elements to copy to the outTraces array.
  * @return  The number of trace results that were returned in outTraces.
  */
 TLIB_API size_t TLIB_CALL tracerFetchTraces(TracerTracedInstruction* outTraces, size_t maxElements);
@@ -416,10 +430,18 @@ TLIB_API size_t TLIB_CALL tracerFetchTraces(TracerTracedInstruction* outTraces, 
  *
  * @param   outBuffer       An array of at least bufferLength characters that will receive the decoded instruction string.
  * @param   bufferLength    The length of the outBuffer array.
- * @retval  eTracerTrue     The function succeeded.
- * @retval  eTracerFalse    The function failed.
+ * @return  If the function succeeds, returns outBuffer. Otherwise \c NULL.
  */
-TLIB_API TracerBool TLIB_CALL tracerFormatInstruction(uintptr_t address, char* outBuffer, size_t bufferLength);
+TLIB_API const char* TLIB_CALL tracerDecodeAndFormatInstruction(uintptr_t address, char* outBuffer, size_t bufferLength);
+
+/**
+ * @brief   Decodes and formats the instruction at the specified address within the memory space
+ *          of the active process context.
+ *
+ * @param   decodeAndFmt    See \ref tracerDecodeAndFormatInstruction
+ * @return  If the function succeeds, a string that holds the decoded and formatted instruction. Otherwise \c NULL.
+ */
+TLIB_API const char* TLIB_CALL tracerDecodeAndFormatInstructionEx(TracerDecodeAndFormat* decodeAndFmt);
 
 #ifdef __cplusplus
 }

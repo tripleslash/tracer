@@ -3,9 +3,16 @@
 
 #include <tracer_lib/process.h>
 
+#define ZYDIS_STATIC_DEFINE
+
+#include <Zydis/Zydis.h>
+
 typedef struct TracerLocalProcessContext {
     TracerProcessContext            mBaseContext;
     TracerContext*                  mTraceContext;
+
+    ZydisDecoder                    mDecoder;
+    ZydisFormatter                  mFormatter;
 } TracerLocalProcessContext;
 
 TracerContext* tracerCreateLocalProcessContext(int type, int size, TracerHandle sharedMemoryHandle);

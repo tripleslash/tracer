@@ -293,6 +293,10 @@ TLIB_API size_t TLIB_CALL tracerFetchTraces(TracerTracedInstruction* outTraces, 
     tracerCoreAcquireProcessContextLock();
 
     TracerContext* ctx = tracerCoreGetProcessContext();
+    if (!ctx) {
+        ctx = tracerGetLocalProcessContext();
+    }
+
     if (ctx) {
         result = tracerProcessFetchTraces(ctx, outTraces, maxElements);
     } else {
@@ -303,15 +307,45 @@ TLIB_API size_t TLIB_CALL tracerFetchTraces(TracerTracedInstruction* outTraces, 
     return result;
 }
 
-TLIB_API TracerBool TLIB_CALL tracerFormatInstruction(uintptr_t address, char* outBuffer, size_t bufferLength) {
+TLIB_API const char* TLIB_CALL tracerDecodeAndFormatInstruction(uintptr_t address, char* outBuffer, size_t bufferLength) {
+    if (!outBuffer || !bufferLength) {
+        tracerCoreSetLastError(eTracerErrorInvalidArgument);
+        return NULL;
+    }
+
+    TracerDecodeAndFormat decodeAndFmt = {
+        /* mSizeOfStruct        = */ sizeof(TracerDecodeAndFormat),
+        /* mAddress             = */ address,
+        /* mOutBuffer           = */ outBuffer,
+        /* mBufferLength        = */ bufferLength,
+        /* mDummy               = */ { 0 },
+    };
+    return tracerDecodeAndFormatInstructionEx(&decodeAndFmt);
+}
+
+TLIB_API const char* TLIB_CALL tracerDecodeAndFormatInstructionEx(TracerDecodeAndFormat* decodeAndFmt) {
     tracerCoreSetLastError(eTracerErrorSuccess);
 
-    TracerBool result = eTracerFalse;
+    if (!decodeAndFmt || decodeAndFmt->mSizeOfStruct < sizeof(TracerDecodeAndFormat)) {
+        tracerCoreSetLastError(eTracerErrorInvalidArgument);
+        return NULL;
+    }
+
+    if (!decodeAndFmt->mOutBuffer) {
+        decodeAndFmt->mOutBuffer = decodeAndFmt->mDummy;
+        decodeAndFmt->mBufferLength = sizeof(decodeAndFmt->mDummy);
+    }
+
+    const char* result = NULL;
     tracerCoreAcquireProcessContextLock();
 
     TracerContext* ctx = tracerCoreGetProcessContext();
+    if (!ctx) {
+        ctx = tracerGetLocalProcessContext();
+    }
+
     if (ctx) {
-        result = tracerProcessFormatInstruction(ctx, address, outBuffer, bufferLength);
+        result = tracerProcessDecodeAndFormatInstruction(ctx, decodeAndFmt);
     } else {
         tracerCoreSetLastError(eTracerErrorNotImplemented);
     }

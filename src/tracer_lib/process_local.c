@@ -1,10 +1,13 @@
 
 #include <tracer_lib/process_local.h>
 #include <tracer_lib/memory_local.h>
+#include <tracer_lib/symbol_resolver.h>
 #include <tracer_lib/vetrace.h>
 #include <tracer_lib/rwqueue.h>
 
 #include <assert.h>
+
+#pragma comment(lib, "Zydis/Zydis.lib")
 
 static TracerBool tracerProcessLocalInit(TracerContext* ctx);
 
@@ -13,6 +16,8 @@ static TracerBool tracerProcessLocalShutdown(TracerContext* ctx);
 static TracerBool tracerProcessLocalStartTrace(TracerContext* ctx, const TracerStartTrace* startTrace);
 
 static TracerBool tracerProcessLocalStopTrace(TracerContext* ctx, const TracerStopTrace* stopTrace);
+
+static const char* tracerProcessLocalDecodeAndFormatInstruction(TracerContext* ctx, TracerDecodeAndFormat* decodeAndFmt);
 
 static TracerContext* gTracerLocalProcessContext = NULL;
 
@@ -39,6 +44,7 @@ TracerContext* tracerCreateLocalProcessContext(int type, int size, TracerHandle 
     process->mSharedMemoryHandle = sharedMemoryHandle;
     process->mStartTrace = tracerProcessLocalStartTrace;
     process->mStopTrace = tracerProcessLocalStopTrace;
+    process->mDecodeAndFormat = tracerProcessLocalDecodeAndFormatInstruction;
 
     process->mMemoryContext = tracerCreateLocalMemoryContext(
         eTracerMemoryContextLocal, sizeof(TracerLocalMemoryContext));
@@ -99,6 +105,14 @@ static TracerBool tracerProcessLocalInit(TracerContext* ctx) {
         return eTracerFalse;
     }
 
+    if (ZydisDecoderInit(&local->mDecoder, ZYDIS_MACHINE_MODE_LONG_COMPAT_32, ZYDIS_ADDRESS_WIDTH_32) != ZYDIS_STATUS_SUCCESS) {
+        return eTracerFalse;
+    }
+    if (ZydisFormatterInit(&local->mFormatter, ZYDIS_FORMATTER_STYLE_INTEL) != ZYDIS_STATUS_SUCCESS) {
+        return eTracerFalse;
+    }
+
+    tracerRegisterCustomSymbolResolver(&local->mFormatter);
     return eTracerTrue;
 }
 
@@ -126,4 +140,31 @@ static TracerBool tracerProcessLocalStartTrace(TracerContext* ctx, const TracerS
 static TracerBool tracerProcessLocalStopTrace(TracerContext* ctx, const TracerStopTrace* stopTrace) {
     TracerLocalProcessContext* process = (TracerLocalProcessContext*)ctx;
     return tracerTraceStop(process->mTraceContext, stopTrace->mAddress, stopTrace->mThreadId);
+}
+
+static const char* tracerProcessLocalDecodeAndFormatInstruction(TracerContext* ctx, TracerDecodeAndFormat* decodeAndFmt) {
+    TracerLocalProcessContext* process = (TracerLocalProcessContext*)ctx;
+
+    ZydisDecodedInstruction decodedInst;
+
+    if (ZydisDecoderDecodeBuffer(&process->mDecoder,
+            (const void*)decodeAndFmt->mAddress,
+            ZYDIS_MAX_INSTRUCTION_LENGTH,
+            decodeAndFmt->mAddress,
+            &decodedInst) != ZYDIS_STATUS_SUCCESS) {
+
+        tracerCoreSetLastError(eTracerErrorSystemCall);
+        return NULL;
+    }
+
+    if (ZydisFormatterFormatInstruction(&process->mFormatter,
+            &decodedInst,
+            decodeAndFmt->mOutBuffer,
+            decodeAndFmt->mBufferLength) != ZYDIS_STATUS_SUCCESS) {
+
+        tracerCoreSetLastError(eTracerErrorSystemCall);
+        return NULL;
+    }
+
+    return decodeAndFmt->mOutBuffer;
 }
