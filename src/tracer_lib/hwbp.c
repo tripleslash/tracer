@@ -35,16 +35,19 @@ int tracerSetHwBreakpointOnContext(void* address, int length, PCONTEXT ctx, Trac
     }
 
     // Find first available hardware register index
-    int index = 0;
+    int index = -1;
 
-    for (; index < 4; ++index) {
-        if (!tracerHwBreakpointGetBits(ctx->Dr7, index << 1, 1)) {
-            // Index is free
-            break;
-        }
+    if (!ctx->Dr0 && !tracerHwBreakpointGetBits(ctx->Dr7, 0 << 1, 1)) {
+        index = 0;
+    } else if (!ctx->Dr1 && !tracerHwBreakpointGetBits(ctx->Dr7, 1 << 1, 1)) {
+        index = 1;
+    } else if (!ctx->Dr2 && !tracerHwBreakpointGetBits(ctx->Dr7, 2 << 1, 1)) {
+        index = 2;
+    } else if (!ctx->Dr3 && !tracerHwBreakpointGetBits(ctx->Dr7, 3 << 1, 1)) {
+        index = 3;
     }
 
-    if (index < 4) {
+    if (index >= 0) {
 
         switch (index) {
         case 0: ctx->Dr0 = (uintptr_t)address; break;
@@ -104,16 +107,19 @@ static TracerHandle tracerSetHwBreakpointOnForeignThread(void* address, int leng
     if (GetThreadContext(thread, &ctx)) {
 
         // Find first available hardware register index
-        int index = 0;
+        int index = -1;
 
-        for (; index < 4; ++index) {
-            if (!tracerHwBreakpointGetBits(ctx.Dr7, index << 1, 1)) {
-                // Index is free
-                break;
-            }
+        if (!ctx.Dr0 && !tracerHwBreakpointGetBits(ctx.Dr7, 0 << 1, 1)) {
+            index = 0;
+        } else if (!ctx.Dr1 && !tracerHwBreakpointGetBits(ctx.Dr7, 1 << 1, 1)) {
+            index = 1;
+        } else if (!ctx.Dr2 && !tracerHwBreakpointGetBits(ctx.Dr7, 2 << 1, 1)) {
+            index = 2;
+        } else if (!ctx.Dr3 && !tracerHwBreakpointGetBits(ctx.Dr7, 3 << 1, 1)) {
+            index = 3;
         }
 
-        if (index < 4) {
+        if (index >= 0) {
 
             TracerHwBreakpoint* breakpoint = (TracerHwBreakpoint*)
                 malloc(sizeof(TracerHwBreakpoint));
@@ -186,7 +192,16 @@ static TracerBool tracerRemoveHwBreakpointOnForeignThread(TracerHandle handle) {
         ctx.ContextFlags = CONTEXT_DEBUG_REGISTERS;
 
         if (GetThreadContext(thread, &ctx)) {
-            // Only need to clear the debug control bits for this breakpoint
+
+            switch (breakpoint->mIndex) {
+            case 0: ctx.Dr0 = 0; break;
+            case 1: ctx.Dr1 = 0; break;
+            case 2: ctx.Dr2 = 0; break;
+            case 3: ctx.Dr3 = 0; break;
+            default: assert(FALSE);
+            }
+
+            // Clear enabled bit for this breakpoint
             tracerHwBreakpointSetBits(&ctx.Dr7, breakpoint->mIndex << 1, 1, 0);
 
             if (SetThreadContext(thread, &ctx)) {
@@ -421,7 +436,15 @@ TracerBool tracerRemoveHwBreakpointOnContext(TracerHandle handle, PCONTEXT ctx) 
         if (breakpoint->mThreadId == -1 ||
             breakpoint->mThreadId == (int)GetCurrentThreadId()) {
 
-            // Only need to clear the debug control bits for this breakpoint
+            switch (breakpoint->mIndex) {
+            case 0: ctx->Dr0 = 0; break;
+            case 1: ctx->Dr1 = 0; break;
+            case 2: ctx->Dr2 = 0; break;
+            case 3: ctx->Dr3 = 0; break;
+            default: assert(FALSE);
+            }
+
+            // Clear enabled bit for this breakpoint
             tracerHwBreakpointSetBits(&ctx->Dr7, breakpoint->mIndex << 1, 1, 0);
 
             free(breakpoint);

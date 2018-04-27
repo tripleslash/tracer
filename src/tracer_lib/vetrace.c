@@ -487,11 +487,6 @@ static LONG CALLBACK tracerVeTraceHandler(PEXCEPTION_POINTERS ex) {
             tracerCoreOnBeginNewTrace(index);
 
             triggeredByBreakpoint = eTracerTrue;
-
-        } else {
-
-            // Restore the bit that we removed during the first call to the handler
-            tracerHwBreakpointSetBits(&ex->ContextRecord->Dr7, index << 1, 1, 1);
         }
 
         int resumeIndex = tracerCoreGetSuspendedHwBreakpointIndex();
@@ -499,6 +494,14 @@ static LONG CALLBACK tracerVeTraceHandler(PEXCEPTION_POINTERS ex) {
         if (resumeIndex != -1) {
             // Disable the breakpoint that we used to resume the trace
             tracerHwBreakpointSetBits(&ex->ContextRecord->Dr7, resumeIndex << 1, 1, 0);
+
+            switch (resumeIndex) {
+            case 0: ex->ContextRecord->Dr0 = 0; break;
+            case 1: ex->ContextRecord->Dr1 = 0; break;
+            case 2: ex->ContextRecord->Dr2 = 0; break;
+            case 3: ex->ContextRecord->Dr3 = 0; break;
+            default: assert(FALSE);
+            }
 
             // Unset suspended index
             tracerCoreSetSuspendedHwBreakpointIndex(-1);
@@ -547,7 +550,12 @@ static LONG CALLBACK tracerVeTraceHandler(PEXCEPTION_POINTERS ex) {
             TracerActiveTrace* currentTrace = trace->mCurrentTrace;
 
             if (currentTrace && currentTrace->mLifetime > 0 && --currentTrace->mLifetime == 0) {
+                // Lifetime value reached zero, remove this trace (and delete hardware breakpoint)
                 tracerVeRemoveCurrentTrace(process->mTraceContext, ex->ContextRecord);
+            }
+            else {
+                // Restore the bit that we removed during the first call to the handler
+                tracerHwBreakpointSetBits(&ex->ContextRecord->Dr7, index << 1, 1, 1);
             }
 
             // The current trace has ended
