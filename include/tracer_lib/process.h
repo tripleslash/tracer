@@ -19,6 +19,8 @@ typedef struct TracerProcessContext {
     TracerBool(*mStopTrace)(TracerContext* ctx, const TracerStopTrace* stopTrace);
 
     const char*(*mDecodeAndFormat)(TracerContext* ctx, TracerDecodeAndFormat* decodeAndFmt);
+
+    TracerBool(*mGetSymbolAddressFromSymbolName)(TracerContext* ctx, TracerGetSymbolAddrFromName* addrFromName);
 } TracerProcessContext;
 
 TracerContext* tracerCreateProcessContext(int type, int size, int pid);
@@ -36,5 +38,7 @@ TracerBool tracerProcessStopTrace(TracerContext* ctx, const TracerStopTrace* sto
 size_t tracerProcessFetchTraces(TracerContext* ctx, TracerTracedInstruction* outTraces, size_t maxElements);
 
 const char* tracerProcessDecodeAndFormatInstruction(TracerContext* ctx, TracerDecodeAndFormat* decodeAndFmt);
+
+TracerBool tracerProcessGetSymbolAddressFromSymbolName(TracerContext* ctx, TracerGetSymbolAddrFromName* addrFromName);
 
 #endif

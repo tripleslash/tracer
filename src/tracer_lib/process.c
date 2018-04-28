@@ -101,3 +101,12 @@ const char* tracerProcessDecodeAndFormatInstruction(TracerContext* ctx, TracerDe
     TLIB_METHOD_CHECK_SUPPORT(process->mDecodeAndFormat, NULL);
     return process->mDecodeAndFormat(ctx, decodeAndFmt);
 }
+
+TracerBool tracerProcessGetSymbolAddressFromSymbolName(TracerContext* ctx, TracerGetSymbolAddrFromName* addrFromName) {
+    if (!tracerCoreValidateContext(ctx, eTracerProcessContext)) {
+        return eTracerFalse;
+    }
+    TracerProcessContext* process = (TracerProcessContext*)ctx;
+    TLIB_METHOD_CHECK_SUPPORT(process->mGetSymbolAddressFromSymbolName, eTracerFalse);
+    return process->mGetSymbolAddressFromSymbolName(ctx, addrFromName);
+}

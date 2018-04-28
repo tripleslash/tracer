@@ -19,6 +19,8 @@ static TracerBool tracerProcessRemoteStopTrace(TracerContext* ctx, const TracerS
 
 static const char* tracerProcessRemoteDecodeAndFormatInstruction(TracerContext* ctx, TracerDecodeAndFormat* decodeAndFmt);
 
+static TracerBool tracerProcessRemoteGetSymbolAddressFromSymbolName(TracerContext* ctx, TracerGetSymbolAddrFromName* addrFromName);
+
 TracerContext* tracerCreateRemoteProcessContext(int type, int size, int pid) {
     assert(size >= sizeof(TracerRemoteProcessContext));
     assert(pid >= 0);
@@ -45,6 +47,7 @@ TracerContext* tracerCreateRemoteProcessContext(int type, int size, int pid) {
     process->mStartTrace = tracerProcessRemoteStartTrace;
     process->mStopTrace = tracerProcessRemoteStopTrace;
     process->mDecodeAndFormat = tracerProcessRemoteDecodeAndFormatInstruction;
+    process->mGetSymbolAddressFromSymbolName = tracerProcessRemoteGetSymbolAddressFromSymbolName;
 
     process->mMemoryContext = tracerCreateRemoteMemoryContext(
         eTracerMemoryContextRemote,
@@ -187,4 +190,11 @@ static const char* tracerProcessRemoteDecodeAndFormatInstruction(TracerContext* 
     decodeAndFmt->mOutBuffer[length - 1] = 0;
 
     return decodeAndFmt->mOutBuffer;
+}
+
+static TracerBool tracerProcessRemoteGetSymbolAddressFromSymbolName(TracerContext* ctx, TracerGetSymbolAddrFromName* addrFromName) {
+    TracerProcessContext* process = (TracerProcessContext*)ctx;
+
+    return (TracerBool)tracerMemoryRemoteCallLocalExportEx(process->mMemoryContext,
+        "tracerGetSymbolAddressFromSymbolNameEx", (TracerStruct*)addrFromName);
 }

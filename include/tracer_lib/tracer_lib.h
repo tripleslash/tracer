@@ -159,6 +159,18 @@ typedef struct TracerDecodeAndFormat {
 } TracerDecodeAndFormat;
 
 /**
+ * @brief   The structure that should be passed to \ref tracerGetSymbolAddressFromSymbolNameEx.
+ * @remarks Don't forget to set \ref mSizeOfStruct.
+ * @see     tracerGetSymbolAddressFromSymbolName
+ * @see     tracerGetSymbolAddressFromSymbolNameEx
+ */
+typedef struct TracerGetSymbolAddrFromName {
+    int                                 mSizeOfStruct;              ///< The size of the structure (in bytes).
+    char                                mSymbolName[256];           ///< A buffer that contains the symbol name.
+    uintptr_t                           mSymbolAddress;             ///< The address of the symbol.
+} TracerGetSymbolAddrFromName;
+
+/**
  * @brief   Values that represent the type of a traced instruction.
  * @see     tracerFetchTraces
  */
@@ -442,6 +454,10 @@ TLIB_API const char* TLIB_CALL tracerDecodeAndFormatInstruction(uintptr_t addres
  * @return  If the function succeeds, a string that holds the decoded and formatted instruction. Otherwise \c NULL.
  */
 TLIB_API const char* TLIB_CALL tracerDecodeAndFormatInstructionEx(TracerDecodeAndFormat* decodeAndFmt);
+
+TLIB_API uintptr_t TLIB_CALL tracerGetSymbolAddressFromSymbolName(const char* symbolName);
+
+TLIB_API TracerBool TLIB_CALL tracerGetSymbolAddressFromSymbolNameEx(TracerGetSymbolAddrFromName* addrFromName);
 
 #ifdef __cplusplus
 }

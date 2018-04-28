@@ -8,4 +8,6 @@ TracerBool tracerRegisterCustomSymbolResolver(void* instructionFormatter);
 
 TracerBool tracerUnregisterCustomSymbolResolver();
 
+uintptr_t tracerResolveSymbol(const char* symbolName);
+
 #endif

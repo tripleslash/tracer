@@ -5,11 +5,12 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:tracer_gui"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800" Loaded="Window_Loaded">
+        Title="MainWindow" Height="614.118" Width="800" Loaded="Window_Loaded">
     <Grid>
         <TreeView HorizontalAlignment="Left" Height="364" Margin="10,45,0,0" VerticalAlignment="Top" Width="772" Name="TraceOutputTreeView" />
-        <ComboBox HorizontalAlignment="Left" Margin="10,10,0,0" VerticalAlignment="Top" Width="424" Name="ProcessSelectionComboBox" SelectionChanged="ProcessSelectionComboBox_SelectionChanged" DropDownOpened="ProcessSelectionComboBox_DropDownOpened"/>
-        <TextBox HorizontalAlignment="Left" Height="23" Margin="571,10,0,0" TextWrapping="Wrap" Text="Function" VerticalAlignment="Top" Width="120" Name="TraceAddressTextBox" IsEnabled="False"/>
-        <Button Content="Start Trace" HorizontalAlignment="Left" Margin="707,13,0,0" VerticalAlignment="Top" Width="75" Name="StartStopTraceButton" Click="StartStopTraceButton_Click" IsEnabled="False"/>
+        <ComboBox HorizontalAlignment="Left" Margin="10,9,0,0" VerticalAlignment="Top" Width="420" Height="30" Name="ProcessSelectionComboBox" SelectionChanged="ProcessSelectionComboBox_SelectionChanged" DropDownOpened="ProcessSelectionComboBox_DropDownOpened"/>
+        <TextBox HorizontalAlignment="Left" Height="23" Margin="435,9,0,0" TextWrapping="Wrap" Text="Function" VerticalAlignment="Top" Width="192" MinHeight="30" Name="TraceAddressTextBox" IsEnabled="False" GotKeyboardFocus="TraceAddressTextBox_OnGotKeyboardFocus"/>
+        <Button Content="Start Trace" HorizontalAlignment="Left" Margin="632,9,0,0" VerticalAlignment="Top" Width="150" Height="30" Name="StartStopTraceButton" Click="StartStopTraceButton_Click" IsEnabled="False"/>
+        <TextBox HorizontalAlignment="Left" Height="159" Margin="10,414,0,0" TextWrapping="Wrap" Text="" AcceptsReturn="True" IsReadOnly="True" VerticalAlignment="Top" Width="772" Name="ConsoleOutputTextbox"/>
     </Grid>
 </Window>

@@ -353,3 +353,50 @@ TLIB_API const char* TLIB_CALL tracerDecodeAndFormatInstructionEx(TracerDecodeAn
     tracerCoreReleaseProcessContextLock();
     return result;
 }
+
+TLIB_API uintptr_t TLIB_CALL tracerGetSymbolAddressFromSymbolName(const char* symbolName) {
+    if (!symbolName) {
+        tracerCoreSetLastError(eTracerErrorInvalidArgument);
+        return 0;
+    }
+
+    TracerGetSymbolAddrFromName addrFromName = {
+        /* mSizeOfStruct        = */ sizeof(TracerGetSymbolAddrFromName),
+        /* mSymbolName          = */ { 0 },
+        /* mSymbolAddress       = */ 0,
+    };
+
+    strncpy(addrFromName.mSymbolName, symbolName, sizeof(addrFromName.mSymbolName));
+    addrFromName.mSymbolName[sizeof(addrFromName.mSymbolName) - 1] = 0;
+
+    if (tracerGetSymbolAddressFromSymbolNameEx(&addrFromName)) {
+        return addrFromName.mSymbolAddress;
+    }
+    return 0;
+}
+
+TLIB_API TracerBool TLIB_CALL tracerGetSymbolAddressFromSymbolNameEx(TracerGetSymbolAddrFromName* addrFromName) {
+    tracerCoreSetLastError(eTracerErrorSuccess);
+
+    if (!addrFromName || addrFromName->mSizeOfStruct < sizeof(TracerGetSymbolAddrFromName)) {
+        tracerCoreSetLastError(eTracerErrorInvalidArgument);
+        return eTracerFalse;
+    }
+
+    TracerBool result = eTracerFalse;
+    tracerCoreAcquireProcessContextLock();
+
+    TracerContext* ctx = tracerCoreGetProcessContext();
+    if (!ctx) {
+        ctx = tracerGetLocalProcessContext();
+    }
+
+    if (ctx) {
+        result = tracerProcessGetSymbolAddressFromSymbolName(ctx, addrFromName);
+    } else {
+        tracerCoreSetLastError(eTracerErrorNotImplemented);
+    }
+
+    tracerCoreReleaseProcessContextLock();
+    return result;
+}

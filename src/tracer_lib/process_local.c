@@ -19,6 +19,8 @@ static TracerBool tracerProcessLocalStopTrace(TracerContext* ctx, const TracerSt
 
 static const char* tracerProcessLocalDecodeAndFormatInstruction(TracerContext* ctx, TracerDecodeAndFormat* decodeAndFmt);
 
+static TracerBool tracerProcessLocalGetSymbolAddressFromSymbolName(TracerContext* ctx, TracerGetSymbolAddrFromName* addrFromName);
+
 static TracerContext* gTracerLocalProcessContext = NULL;
 
 TracerContext* tracerCreateLocalProcessContext(int type, int size, TracerHandle sharedMemoryHandle) {
@@ -45,6 +47,7 @@ TracerContext* tracerCreateLocalProcessContext(int type, int size, TracerHandle 
     process->mStartTrace = tracerProcessLocalStartTrace;
     process->mStopTrace = tracerProcessLocalStopTrace;
     process->mDecodeAndFormat = tracerProcessLocalDecodeAndFormatInstruction;
+    process->mGetSymbolAddressFromSymbolName = tracerProcessLocalGetSymbolAddressFromSymbolName;
 
     process->mMemoryContext = tracerCreateLocalMemoryContext(
         eTracerMemoryContextLocal, sizeof(TracerLocalMemoryContext));
@@ -124,6 +127,7 @@ static TracerBool tracerProcessLocalShutdown(TracerContext* ctx) {
         process->mTraceContext = NULL;
     }
 
+    tracerUnregisterCustomSymbolResolver();
     return eTracerTrue;
 }
 
@@ -167,4 +171,9 @@ static const char* tracerProcessLocalDecodeAndFormatInstruction(TracerContext* c
     }
 
     return decodeAndFmt->mOutBuffer;
+}
+
+static TracerBool tracerProcessLocalGetSymbolAddressFromSymbolName(TracerContext* ctx, TracerGetSymbolAddrFromName* addrFromName) {
+    addrFromName->mSymbolAddress = tracerResolveSymbol(addrFromName->mSymbolName);
+    return addrFromName->mSymbolAddress != 0;
 }

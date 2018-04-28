@@ -87,3 +87,16 @@ TracerBool tracerUnregisterCustomSymbolResolver() {
     SymCleanup(GetCurrentProcess());
     return eTracerTrue;
 }
+
+uintptr_t tracerResolveSymbol(const char* symbolName) {
+    SYMBOL_INFO_PACKAGE symbolInfoPackage;
+    symbolInfoPackage.si.SizeOfStruct = sizeof(SYMBOL_INFO);
+    symbolInfoPackage.si.MaxNameLen = sizeof(symbolInfoPackage.name);
+
+    if (!SymFromName(GetCurrentProcess(), symbolName, &symbolInfoPackage.si)) {
+        tracerCoreSetLastError(eTracerErrorSystemCall);
+        return 0;
+    }
+
+    return (uintptr_t)symbolInfoPackage.si.Address;
+}

@@ -3,7 +3,9 @@ using System.Diagnostics;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Threading;
+using tracer_wrapper;
 
 namespace tracer_gui
 {
@@ -43,9 +45,14 @@ namespace tracer_gui
 
         private UiTraceNode lastTraceNode = null;
 
+        private int traceLifetime = 0;
+        private UIntPtr currentTraceAddr = UIntPtr.Zero;
+
         public MainWindow()
         {
             InitializeComponent();
+
+            Console.SetOut(new TextBoxStreamWriter(ConsoleOutputTextbox));
         }
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
@@ -58,6 +65,15 @@ namespace tracer_gui
         {
             foreach (var traceResult in TracerApi.FetchTraces())
             {
+                if (traceLifetime > 0)
+                {
+                    if (traceResult.CallDepth == 0 && traceResult.Type == TracedInstructionType.Return)
+                        --traceLifetime;
+
+                    if (traceLifetime == 0)
+                        StopTrace(traceResult.BranchTarget);
+                }
+
                 if (lastTraceNode == null)
                 {
                     var newNode = new UiTraceNode(null, traceResult);
@@ -71,7 +87,7 @@ namespace tracer_gui
                 {
                     int numBigger = traceResult.CallDepth - lastTraceNode.TracedInstruction.CallDepth;
                     if (numBigger > 1)
-                        MessageBox.Show("Something weird happened!");
+                        Console.WriteLine(@"Trace data seems corrupted!");
 
                     var newNode = new UiTraceNode(lastTraceNode, traceResult);
                     lastTraceNode.Items.Add(newNode);
@@ -143,30 +159,87 @@ namespace tracer_gui
                     if (!process.Is64BitProcess())
                         (sender as ComboBox)?.Items.Add(new ProcessSelectionItem(process));
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
                 }
             }
         }
 
+        private void StopTrace(UIntPtr stopAddr)
+        {
+            Console.WriteLine($@"Stopped trace at 0x{stopAddr.ToUInt64():X8}.");
+
+            StartStopTraceButton.Content = "Start Trace";
+
+            TraceAddressTextBox.IsEnabled = true;
+            ProcessSelectionComboBox.IsEnabled = true;
+
+            currentTraceAddr = UIntPtr.Zero;
+            traceLifetime = 1;
+        }
+
         private void StartStopTraceButton_Click(object sender, RoutedEventArgs e)
         {
+            if (currentTraceAddr != UIntPtr.Zero)
+            {
+                StopTrace(currentTraceAddr);
+                return;
+            }
+
+            var address = UIntPtr.Zero;
             try
             {
-                if (TracerApi.StartTrace(new UIntPtr(Convert.ToUInt32(TraceAddressTextBox.Text, 16)), -1, -1, 1))
+                address = new UIntPtr(Convert.ToUInt64(TraceAddressTextBox.Text, 16));
+            }
+            catch (Exception)
+            {
+                try
                 {
-                    DispatcherTimer.Start();
+                    var splitSymbolName = TraceAddressTextBox.Text.Split('+');
+                    if (splitSymbolName.Length == 0 || splitSymbolName.Length > 2)
+                        return;
 
-                    TraceAddressTextBox.IsEnabled = false;
-                    ProcessSelectionComboBox.IsEnabled = false;
+                    var symbolName = splitSymbolName[0];
+                    ulong displacement = 0;
 
-                    StartStopTraceButton.Content = "Stop Trace";
+                    if (splitSymbolName.Length > 1)
+                        displacement = Convert.ToUInt64(splitSymbolName[1], 16);
+
+                    address = new UIntPtr(TracerApi.GetSymbolAddress(symbolName).ToUInt64() + displacement);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(ex.Message);
+                    return;
                 }
             }
-            catch (Exception ex)
+
+            if (address == UIntPtr.Zero)
             {
-                MessageBox.Show(ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                Console.WriteLine(@"Function address could not be found.");
+                return;
             }
+
+            Console.WriteLine($@"Starting trace at 0x{address.ToUInt64():X8}.");
+
+            if (TracerApi.StartTrace(address, -1, -1, 1))
+            {
+                currentTraceAddr = address;
+                traceLifetime = 1;
+
+                DispatcherTimer.Start();
+
+                TraceAddressTextBox.IsEnabled = false;
+                ProcessSelectionComboBox.IsEnabled = false;
+
+                StartStopTraceButton.Content = "Stop Trace";
+            }
+        }
+
+        private void TraceAddressTextBox_OnGotKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
+        {
+            if (sender is TextBox textbox)
+                textbox.Text = string.Empty;
         }
     }
 }
