@@ -207,6 +207,8 @@ static TracerBool tracerVeTraceStop(TracerContext* ctx, void* address, int threa
         return eTracerFalse;
     }
 
+    TracerBool result = eTracerFalse;
+
     TracerVeTraceContext* trace = (TracerVeTraceContext*)ctx;
     EnterCriticalSection(&trace->mTraceCritSect);
 
@@ -233,6 +235,8 @@ static TracerBool tracerVeTraceStop(TracerContext* ctx, void* address, int threa
 
             free(activeTrace);
             activeTrace = NULL;
+
+            result = eTracerTrue;
         }
 
         if (activeTrace) {
@@ -242,7 +246,7 @@ static TracerBool tracerVeTraceStop(TracerContext* ctx, void* address, int threa
     }
 
     LeaveCriticalSection(&trace->mTraceCritSect);
-    return eTracerFalse;
+    return result;
 }
 
 static void tracerVeRemoveCurrentTrace(TracerContext* ctx, PCONTEXT registers) {

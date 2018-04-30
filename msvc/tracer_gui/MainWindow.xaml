@@ -5,12 +5,16 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:tracer_gui"
         mc:Ignorable="d"
-        Title="MainWindow" Height="614.118" Width="800" Loaded="Window_Loaded">
+        Title="MainWindow" Height="614.118" Width="939.08" Loaded="Window_Loaded" ResizeMode="NoResize">
     <Grid>
-        <TreeView HorizontalAlignment="Left" Height="364" Margin="10,45,0,0" VerticalAlignment="Top" Width="772" Name="TraceOutputTreeView" />
-        <ComboBox HorizontalAlignment="Left" Margin="10,9,0,0" VerticalAlignment="Top" Width="420" Height="30" Name="ProcessSelectionComboBox" SelectionChanged="ProcessSelectionComboBox_SelectionChanged" DropDownOpened="ProcessSelectionComboBox_DropDownOpened"/>
-        <TextBox HorizontalAlignment="Left" Height="23" Margin="435,9,0,0" TextWrapping="Wrap" Text="Function" VerticalAlignment="Top" Width="192" MinHeight="30" Name="TraceAddressTextBox" IsEnabled="False" GotKeyboardFocus="TraceAddressTextBox_OnGotKeyboardFocus"/>
-        <Button Content="Start Trace" HorizontalAlignment="Left" Margin="632,9,0,0" VerticalAlignment="Top" Width="150" Height="30" Name="StartStopTraceButton" Click="StartStopTraceButton_Click" IsEnabled="False"/>
-        <TextBox HorizontalAlignment="Left" Height="159" Margin="10,414,0,0" TextWrapping="Wrap" Text="" AcceptsReturn="True" IsReadOnly="True" VerticalAlignment="Top" Width="772" Name="ConsoleOutputTextbox"/>
+        <ComboBox HorizontalAlignment="Left" Margin="10,9,0,0" VerticalAlignment="Top" VerticalContentAlignment="Center" Width="304" Height="30" Name="ProcessSelectionComboBox" SelectionChanged="ProcessSelectionComboBox_SelectionChanged" DropDownOpened="ProcessSelectionComboBox_DropDownOpened" />
+        <TextBox HorizontalAlignment="Left" Height="23" Margin="319,9,0,0" VerticalContentAlignment="Center" TextWrapping="Wrap" Text="Function" TextAlignment="Center" VerticalAlignment="Top" Width="277" MinHeight="30" Name="TraceAddressTextBox" IsEnabled="False" GotKeyboardFocus="AutoClearTextBox_OnGotKeyboardFocus" LostKeyboardFocus="TraceAddressTextBox_OnLostKeyboardFocus"/>
+        <TextBox HorizontalAlignment="Left" Height="23" Margin="601,9,0,0" VerticalContentAlignment="Center" TextWrapping="Wrap" Text="Trace Depth" TextAlignment="Center" VerticalAlignment="Top" Width="80" MinHeight="30" Name="TraceDepthTextBox" IsEnabled="False" GotKeyboardFocus="AutoClearTextBox_OnGotKeyboardFocus" LostKeyboardFocus="TraceDepthTextBox_OnLostKeyboardFocus" PreviewTextInput="NumericTextBox_OnPreviewTextInput" DataObject.Pasting="NumericTextBox_OnPasting"/>
+        <TextBox HorizontalAlignment="Left" Height="23" Margin="686,9,0,0" VerticalContentAlignment="Center" TextWrapping="Wrap" Text="Lifetime" TextAlignment="Center" VerticalAlignment="Top" Width="80" MinHeight="30" Name="LifetimeTextBox" IsEnabled="False" GotKeyboardFocus="AutoClearTextBox_OnGotKeyboardFocus" LostKeyboardFocus="LifetimeTextBox_OnLostKeyboardFocus" PreviewTextInput="NumericTextBox_OnPreviewTextInput" DataObject.Pasting="NumericTextBox_OnPasting"/>
+        <Button Content="Start Trace" HorizontalAlignment="Left" Margin="771,9,0,0" VerticalAlignment="Top" VerticalContentAlignment="Center" Width="150" Height="30" Name="StartStopTraceButton" Click="StartStopTraceButton_Click" IsEnabled="False"/>
+
+        <TreeView HorizontalAlignment="Left" Height="385" Margin="10,45,0,0" VerticalAlignment="Top" Width="911" Name="TraceOutputTreeView" />
+        <TextBox HorizontalAlignment="Left" Height="103" Margin="10,470,0,0" TextWrapping="Wrap" Text="" AcceptsReturn="True" IsReadOnly="True" VerticalAlignment="Top" Width="911" Name="ConsoleOutputTextbox"/>
+        <Button Content="Clear Trace" HorizontalAlignment="Left" Margin="771,435,0,0" VerticalAlignment="Top" VerticalContentAlignment="Center" Width="150" Height="30" Name="ClearTraceButton" Click="ClearTraceButton_OnClick" IsEnabled="True"/>
     </Grid>
 </Window>
